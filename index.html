@@ -43,7 +43,8 @@ h3{margin:12px 0 4px;font-size:.95rem}
     <label><input type="radio" name="k" value="in" checked>💚 รายรับ (401–408)</label>
     <label><input type="radio" name="k" value="out">🧡 รายจ่าย (501–512)</label>
   </div>
-  <div class="sm" style="margin-bottom:6px">คัดลอกแถวจากบันทึกรายรับหรือรายจ่ายประจำวัน (เดือน, วันที่, เอกสาร, รายการ, จำนวนเงิน) ไม่ต้องรวมหัวตาราง วางทีละชนิด การวางชนิดเดิมซ้ำจะแทนที่ของเดิม</div>
+  <div class="sm" style="margin-bottom:6px">คัดลอกแถวจากบันทึกรายรับหรือรายจ่ายประจำวัน (เดือน, วันที่, เอกสาร, รายการ, จำนวนเงิน) ไม่ต้องรวมหัวตาราง วางทีละชนิด หรือวางต่อกันหลายชุดเพื่อสะสมยอดได้</div>
+  <label class="sm" style="display:block;margin-bottom:6px"><input type="checkbox" id="acc" checked> สะสมยอด: เพิ่มต่อจากข้อมูลที่วางไว้แล้ว (ไม่ติ๊ก = แทนที่ของเดิม)</label>
   <textarea id="in" placeholder="วางที่นี่"></textarea>
   <button class="btn" onclick="go()">จัดรหัสบัญชีอัตโนมัติ</button>
   <button class="btn alt" onclick="$('in').value='';$('in').focus()">🗑️ ลบข้อความในช่องวาง</button>
@@ -111,8 +112,8 @@ let rows=[],sumTxt="";
 const DOC=/^[\u0E00-\u0E7F]{1,4}\s*\d+(\/[\d-]+)?$/;
 const kind=()=>document.querySelector('input[name=k]:checked').value;
 function go(){
-const k=kind(),L=k=="in"?IN:OUT;let mo="",dy="",doc="",skip=0;
-rows=rows.filter(r=>r.k!=k);
+const k=kind(),L=k=="in"?IN:OUT;let mo="",dy="",doc="",skip=0,dup=0;
+if(!$("acc").checked)rows=rows.filter(r=>r.k!=k);
 tsv($("in").value).forEach(c=>{
 const x=c.map(s=>s.trim());
 if(x[0]&&!/\d/.test(x[0]))mo=x[0].replace(/[.\s]/g,"");
@@ -123,8 +124,10 @@ if(x.some(s=>/^(ยอดยก|ยกไป|รวม)/.test(s))){skip++;if(/�
 const d=x.slice(2).filter(s=>/[\u0E00-\u0E7F]/.test(s)&&!DOC.test(s)).pop();
 if(!d||!a)return;
 const m=MO[mo]||mo;
-rows.push({k,d:dy+" "+m,mn:MN[m]||0,dn:+dy||0,doc,desc:d,code:guess(d,L),a})});
-$("info").dataset.skip=skip;render()}
+const nr={k,d:dy+" "+m,mn:MN[m]||0,dn:+dy||0,doc,desc:d,code:guess(d,L),a};
+if(doc&&rows.some(r=>r.k==k&&r.d==nr.d&&r.doc==doc&&r.desc==d&&r.a==a)){dup++;return}
+rows.push(nr)});
+render();$("info").textContent+=(dup?" · ข้ามรายการซ้ำ "+dup:"")}
 function render(){
 const show=rows.length>0;$("rc").style.display=$("sc").style.display=$("oc").style.display=show?"block":"none";
 const m0=(rows.find(r=>r.mn)||{}).mn||1;
@@ -171,9 +174,12 @@ try{await ST.save({name:n,at:Date.now(),op:$("op").value,ac:$("ac").value,rows:r
 async function showSets(){
 let L=[];try{L=await ST.list()}catch(e){$("vm").textContent="โหลดรายการที่บันทึกไม่ได้"}
 L.sort((a,b)=>(b.at||0)-(a.at||0));
-$("sl").innerHTML=L.map(s=>`<div class="row"><span><b>${esc(s.name||"")}</b><br><span class="sm">${new Date(s.at||0).toLocaleString("th-TH")} · ${(s.rows||[]).length} รายการ</span></span><span><button class="btn alt" style="width:auto;padding:6px 10px;margin:0" onclick="loadSet('${s.id}')">เปิด</button> <button class="btn alt" style="width:auto;padding:6px 10px;margin:0" onclick="delSet('${s.id}')">ลบ</button></span></div>`).join("")||'<div class="sm">ยังไม่มีชุดที่บันทึก</div>'}
-async function loadSet(id){const s=(await ST.list()).find(x=>x.id===id);if(!s)return;
-rows=JSON.parse(JSON.stringify(s.rows||[]));$("op").value=s.op||"";$("ac").value=s.ac||"";render();$("vm").textContent="เปิดชุด “"+(s.name||"")+"” แล้ว"}
+$("sl").innerHTML=L.map(s=>`<div class="row"><span><b>${esc(s.name||"")}</b><br><span class="sm">${new Date(s.at||0).toLocaleString("th-TH")} · ${(s.rows||[]).length} รายการ</span></span><span><button class="btn alt" style="width:auto;padding:6px 10px;margin:0" onclick="loadSet('${s.id}')">เปิด</button> <button class="btn alt" style="width:auto;padding:6px 10px;margin:0" onclick="loadSet('${s.id}',1)">เพิ่มต่อ</button> <button class="btn alt" style="width:auto;padding:6px 10px;margin:0" onclick="delSet('${s.id}')">ลบ</button></span></div>`).join("")||'<div class="sm">ยังไม่มีชุดที่บันทึก</div>'}
+async function loadSet(id,add){const s=(await ST.list()).find(x=>x.id===id);if(!s)return;
+const nr=JSON.parse(JSON.stringify(s.rows||[]));let dup=0;
+if(add){nr.forEach(n=>{if(n.doc&&rows.some(r=>r.k==n.k&&r.d==n.d&&r.doc==n.doc&&r.desc==n.desc&&r.a==n.a))dup++;else rows.push(n)});if(!$("op").value)$("op").value=s.op||""}
+else{rows=nr;$("op").value=s.op||"";$("ac").value=s.ac||""}
+render();$("vm").textContent="เปิดชุด “"+(s.name||"")+"” แล้ว"+(add?" (เพิ่มต่อ"+(dup?" ข้ามซ้ำ "+dup:"")+")":"")}
 async function delSet(id){if(!confirm("ลบชุดนี้?"))return;try{await ST.del(id)}catch(e){}showSets()}
 initST();
 async function cp(t,id){try{await navigator.clipboard.writeText(t);$(id).textContent="คัดลอกแล้ว ไปวางในชีตได้เลย"}
