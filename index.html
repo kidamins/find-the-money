@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ตัวช่วยแยกประเภทรายได้</title>
+<style>
+:root{--bg:#fff7f5;--card:#fff;--ink:#3b2a2a;--mute:#8a7471;--line:#f0dcd8;--pri:#e8675a;--pri2:#ffe3df;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#241b1a;--card:#2f2322;--ink:#f6e9e6;--mute:#b99d99;--line:#4a3836;--pri:#ff8576;--pri2:#4a2b28}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans Thai","Sarabun",system-ui,sans-serif;font-size:16px;padding:14px;max-width:640px;margin-inline:auto}
+h1{font-size:1.25rem;margin:4px 0 12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:14px}
+.tabs{display:flex;gap:6px;margin-bottom:12px}
+.tabs button{flex:1;padding:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;font:inherit}
+.tabs button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+.chips{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px}
+.chip{padding:10px;border:2px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font:inherit;text-align:left;font-size:.88rem}
+.chip b{display:block;color:var(--pri);font-size:1rem}
+.chip.on{border-color:var(--pri);background:var(--pri2)}
+input,textarea,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit;margin-bottom:8px}
+textarea{min-height:110px}
+.btn{width:100%;padding:12px;border:0;border-radius:12px;background:var(--pri);color:#fff;font:inherit;font-weight:600}
+.btn.alt{background:var(--pri2);color:var(--ink)}
+.row{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px dashed var(--line);font-size:.92rem;align-items:center}
+.row:last-child{border:0}
+.num{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:600}
+.total{font-size:1.1rem;color:var(--pri)}
+.x{border:0;background:none;color:var(--mute);font-size:1.1rem}
+.sm{font-size:.8rem;color:var(--mute)}
+.pv{display:grid;grid-template-columns:1fr 110px;gap:6px;align-items:center;margin-bottom:6px;font-size:.88rem}
+.pv select{margin:0;padding:6px}
+.hide{display:none}
+.scroll{overflow-x:auto}
+</style>
+</head>
+<body>
+<h1>💰 ตัวช่วยแยกประเภทรายได้</h1>
+
+<div class="tabs">
+  <button id="t1" class="on" onclick="tab(1)">กรอกทีละรายการ</button>
+  <button id="t2" onclick="tab(2)">วางจากชีต</button>
+</div>
+
+<div class="card" id="p1">
+  <div class="chips" id="chips"></div>
+  <input id="amt" type="number" inputmode="decimal" placeholder="จำนวนเงิน (บาท)">
+  <input id="note" placeholder="หมายเหตุ / เลขที่ใบเสร็จ (ไม่บังคับ)">
+  <button class="btn" onclick="addOne()">+ เพิ่มรายการ</button>
+</div>
+
+<div class="card hide" id="p2">
+  <div class="sm" style="margin-bottom:6px">คัดลอกคอลัมน์ “รายการรับ” และ “เดบิต” จาก Google Sheets มาวาง ระบบจะเดารหัสจากชื่อรายการให้ แก้ไขได้ก่อนยืนยัน</div>
+  <textarea id="paste" placeholder="ค่าบำรุงสมาคม&#9;300&#10;กิจกรรมส่งเสริมการศึกษา&#9;200"></textarea>
+  <button class="btn alt" onclick="parse()">ตรวจรหัสอัตโนมัติ</button>
+  <div id="pv" style="margin-top:10px"></div>
+  <button class="btn alt hide" id="cpCodes" onclick="cp(pend.map(p=>p.c).join('\n'))">คัดลอกเฉพาะรหัส (วางในคอลัมน์ข้างๆ)</button>
+  <button class="btn hide" id="okAll" style="margin-top:8px" onclick="addAll()">ยืนยันเพิ่มยอดสะสม (เฉพาะรายการที่มีจำนวนเงิน)</button>
+</div>
+
+<div class="card">
+  <b>ยอดสะสมแต่ละรหัส</b>
+  <div id="sum" style="margin-top:6px"></div>
+  <div class="row"><span><b>รวมทั้งหมด</b></span><span class="num total" id="grand">0.00</span></div>
+  <div style="display:flex;gap:8px;margin-top:8px">
+    <button class="btn alt" onclick="copySum()">คัดลอกสรุป</button>
+    <button class="btn alt" onclick="copyAll()">คัดลอกรายการทั้งหมด</button>
+  </div>
+  <div class="sm" id="msg" style="margin-top:6px"></div>
+</div>
+
+<div class="card">
+  <b>รายการที่บันทึก</b> <span class="sm" id="cnt"></span>
+  <div id="list" style="margin-top:6px"></div>
+  <button class="btn alt" style="margin-top:8px" onclick="clearAll()">ล้างทั้งหมด</button>
+</div>
+
+<script>
+const CODES=[
+["401","รายได้ค่ากิจกรรมคณะสี",["คณะสี"]],
+["402","รายได้ค่าเสื้อกีฬา",["เสื้อกีฬา"]],
+["403","รายได้ค่าบำรุงสมาคม",["บำรุงสมาคม","สมาคม"]],
+["404","รายได้ค่ากิจกรรมส่งเสริมการศึกษา",["ส่งเสริมการศึกษา"]],
+["405","รายได้ค่ากิจกรรมชุมนุมและสาธารณประโยชน์",["ชุมนุม","สาธารณประโยชน์"]],
+["406","รายได้ค่าเบี้ยประกันภัย",["เบี้ยประกัน","ประกันภัย","ประกัน","อุบัติเหตุ"]],
+["407","รายได้จากการบริจาค",["บริจาค"]],
+["408","ดอกเบี้ยรับ",["ดอกเบี้ย"]]];
+let sel=null,data=[],pend=[];
+try{data=JSON.parse(localStorage.getItem("inc")||"[]")}catch(e){}
+const save=()=>{try{localStorage.setItem("inc",JSON.stringify(data))}catch(e){}};
+const fmt=n=>n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+function tab(n){p1.classList.toggle("hide",n!=1);p2.classList.toggle("hide",n!=2);t1.classList.toggle("on",n==1);t2.classList.toggle("on",n==2)}
+function chips(){document.getElementById("chips").innerHTML=CODES.map(c=>`<button class="chip ${sel==c[0]?"on":""}" onclick="sel='${c[0]}';chips()"><b>${c[0]}</b>${c[1].replace("รายได้ค่า","").replace("รายได้จาก","")}</button>`).join("")}
+function addOne(){const a=parseFloat(amt.value);if(!sel){msg.textContent="กรุณาเลือกรหัสก่อน";return}if(!a){msg.textContent="กรุณาใส่จำนวนเงิน";return}
+data.push({c:sel,a,n:note.value});amt.value="";note.value="";msg.textContent="";save();render()}
+const norm=s=>s.replace(/[\s\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/g,"");
+const bg=s=>{const r=new Set();for(let i=0;i<s.length-1;i++)r.add(s.slice(i,i+2));return r};
+function guess(t){t=norm(t);const tb=bg(t);let best="",bs=0;
+for(const c of CODES)for(const k of c[2]){const n=norm(k);if(t.includes(n))return c[0];const kb=bg(n);if(!kb.size)continue;let h=0;kb.forEach(x=>{if(tb.has(x))h++});const s=h/kb.size;if(s>bs){bs=s;best=c[0]}}
+return bs>=0.7?best:""}
+function parse(){pend=[];paste.value.split("\n").forEach(l=>{l=l.trim();if(!l)return;
+const m=l.match(/[\d,]+(\.\d+)?\s*$/);const a=m?parseFloat(m[0].replace(/,/g,"")):0;const d=m?l.slice(0,m.index).trim():l;
+pend.push({d,a,c:guess(d)})});
+pv.innerHTML=pend.map((p,i)=>`<div class="pv"><span>${esc(p.d)} <b class="num">${p.a?fmt(p.a):""}</b></span><select onchange="pend[${i}].c=this.value"><option value="">? เลือก</option>${CODES.map(c=>`<option value="${c[0]}" ${p.c==c[0]?"selected":""}>${c[0]}</option>`).join("")}</select></div>`).join("")||"<span class='sm'>ไม่พบรายการ</span>";
+okAll.classList.toggle("hide",!pend.length);cpCodes.classList.toggle("hide",!pend.length)}
+function addAll(){const bad=pend.filter(p=>!p.c).length;if(bad){msg.textContent="ยังมี "+bad+" รายการที่ไม่ได้เลือกรหัส";return}
+pend.forEach(p=>{if(p.a>0)data.push({c:p.c,a:p.a,n:p.d})});pend=[];pv.innerHTML="";paste.value="";okAll.classList.add("hide");msg.textContent="";save();render()}
+const esc=s=>s.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+function del(i){data.splice(i,1);save();render()}
+function clearAll(){if(confirm("ล้างรายการทั้งหมด?")){data=[];save();render()}}
+function totals(){const t={};CODES.forEach(c=>t[c[0]]=0);data.forEach(d=>t[d.c]+=d.a);return t}
+function render(){const t=totals();let g=0;
+sum.innerHTML=CODES.map(c=>{g+=t[c[0]];const k=data.filter(d=>d.c==c[0]).length;return `<div class="row"><span><b>${c[0]}</b> ${c[1].replace("รายได้ค่า","").replace("รายได้จาก","")} <span class="sm">(${k})</span></span><span class="num">${fmt(t[c[0]])}</span></div>`}).join("");
+grand.textContent=fmt(g);cnt.textContent="("+data.length+")";
+list.innerHTML=data.map((d,i)=>`<div class="row"><span><b>${d.c}</b> ${esc(d.n||"")}</span><span><span class="num">${fmt(d.a)}</span> <button class="x" onclick="del(${i})">✕</button></span></div>`).reverse().join("")||"<span class='sm'>ยังไม่มีรายการ</span>"}
+async function cp(txt){try{await navigator.clipboard.writeText(txt);msg.textContent="คัดลอกแล้ว วางใน Sheets ได้เลย"}catch(e){msg.textContent="คัดลอกไม่สำเร็จ";}}
+function copySum(){const t=totals();cp(CODES.map(c=>c[0]+"\t"+c[1]+"\t"+t[c[0]]).join("\n"))}
+function copyAll(){cp(data.map(d=>d.c+"\t"+(d.n||"")+"\t"+d.a).join("\n"))}
+chips();render();
+</script>
+</body>
+</html>
