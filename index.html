@@ -3,120 +3,181 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ตัวช่วยแยกประเภทรายได้</title>
+<title>ใส่รหัสบัญชี รายรับ-รายจ่าย</title>
 <style>
-:root{--bg:#fff7f5;--card:#fff;--ink:#3b2a2a;--mute:#8a7471;--line:#f0dcd8;--pri:#e8675a;--pri2:#ffe3df;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#241b1a;--card:#2f2322;--ink:#f6e9e6;--mute:#b99d99;--line:#4a3836;--pri:#ff8576;--pri2:#4a2b28}}
+:root{--bg:#fff7f5;--card:#fff;--ink:#3b2a2a;--mute:#8a7471;--line:#f0dcd8;--pri:#e8675a;--pri2:#ffe3df;--ok:#2e9e6b;--bad:#d64545;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#241b1a;--card:#2f2322;--ink:#f6e9e6;--mute:#b99d99;--line:#4a3836;--pri:#ff8576;--pri2:#4a2b28;--ok:#5fd39b;--bad:#ff7b7b}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans Thai","Sarabun",system-ui,sans-serif;font-size:16px;padding:14px;max-width:640px;margin-inline:auto}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans Thai","Sarabun",system-ui,sans-serif;padding:14px;max-width:720px;margin-inline:auto}
 h1{font-size:1.25rem;margin:4px 0 12px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:14px}
-.tabs{display:flex;gap:6px;margin-bottom:12px}
-.tabs button{flex:1;padding:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;font:inherit}
-.tabs button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
-.chips{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px}
-.chip{padding:10px;border:2px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font:inherit;text-align:left;font-size:.88rem}
-.chip b{display:block;color:var(--pri);font-size:1rem}
-.chip.on{border-color:var(--pri);background:var(--pri2)}
-input,textarea,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit;margin-bottom:8px}
-textarea{min-height:110px}
-.btn{width:100%;padding:12px;border:0;border-radius:12px;background:var(--pri);color:#fff;font:inherit;font-weight:600}
+textarea,select,input[type=number]{width:100%;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit}
+textarea{min-height:100px;margin-bottom:8px}
+.btn{width:100%;padding:12px;border:0;border-radius:12px;background:var(--pri);color:#fff;font:inherit;font-weight:600;margin-top:6px}
 .btn.alt{background:var(--pri2);color:var(--ink)}
-.row{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px dashed var(--line);font-size:.92rem;align-items:center}
-.row:last-child{border:0}
-.num{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:600}
-.total{font-size:1.1rem;color:var(--pri)}
-.x{border:0;background:none;color:var(--mute);font-size:1.1rem}
-.sm{font-size:.8rem;color:var(--mute)}
-.pv{display:grid;grid-template-columns:1fr 110px;gap:6px;align-items:center;margin-bottom:6px;font-size:.88rem}
-.pv select{margin:0;padding:6px}
-.hide{display:none}
-.scroll{overflow-x:auto}
+.btn:disabled{opacity:.4}
+.sm{font-size:.82rem;color:var(--mute)}
+.ok{color:var(--ok)}.bad{color:var(--bad)}
+.modes{display:flex;gap:8px;margin:6px 0 8px}
+.modes label{flex:1;border:2px solid var(--line);border-radius:12px;padding:10px;text-align:center;cursor:pointer}
+.modes input{display:none}
+.modes label:has(input:checked){border-color:var(--pri);background:var(--pri2);font-weight:600}
+.scroll{overflow:auto;max-height:340px}
+table{border-collapse:collapse;width:100%;font-size:.85rem}
+td,th{padding:5px 6px;border-bottom:1px dashed var(--line);text-align:left;white-space:nowrap}
+td.n{text-align:right;font-variant-numeric:tabular-nums}
+td select{padding:4px;min-width:84px}
+.row{display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px dashed var(--line);font-size:.9rem}
+.row.z{color:var(--mute)}
+.row.t{font-weight:700;border-bottom:2px solid var(--line)}
+h3{margin:12px 0 4px;font-size:.95rem}
+.f{display:flex;align-items:center;gap:8px;margin:6px 0}.f input{max-width:170px}
 </style>
 </head>
 <body>
-<h1>💰 ตัวช่วยแยกประเภทรายได้</h1>
-
-<div class="tabs">
-  <button id="t1" class="on" onclick="tab(1)">กรอกทีละรายการ</button>
-  <button id="t2" onclick="tab(2)">วางจากชีต</button>
-</div>
-
-<div class="card" id="p1">
-  <div class="chips" id="chips"></div>
-  <input id="amt" type="number" inputmode="decimal" placeholder="จำนวนเงิน (บาท)">
-  <input id="note" placeholder="หมายเหตุ / เลขที่ใบเสร็จ (ไม่บังคับ)">
-  <button class="btn" onclick="addOne()">+ เพิ่มรายการ</button>
-</div>
-
-<div class="card hide" id="p2">
-  <div class="sm" style="margin-bottom:6px">คัดลอกคอลัมน์ “รายการรับ” และ “เดบิต” จาก Google Sheets มาวาง ระบบจะเดารหัสจากชื่อรายการให้ แก้ไขได้ก่อนยืนยัน</div>
-  <textarea id="paste" placeholder="ค่าบำรุงสมาคม&#9;300&#10;กิจกรรมส่งเสริมการศึกษา&#9;200"></textarea>
-  <button class="btn alt" onclick="parse()">ตรวจรหัสอัตโนมัติ</button>
-  <div id="pv" style="margin-top:10px"></div>
-  <button class="btn alt hide" id="cpCodes" onclick="cp(pend.map(p=>p.c).join('\n'))">คัดลอกเฉพาะรหัส (วางในคอลัมน์ข้างๆ)</button>
-  <button class="btn hide" id="okAll" style="margin-top:8px" onclick="addAll()">ยืนยันเพิ่มยอดสะสม (เฉพาะรายการที่มีจำนวนเงิน)</button>
-</div>
+<h1>🧾 ใส่รหัสบัญชี รายรับ–รายจ่าย</h1>
 
 <div class="card">
-  <b>ยอดสะสมแต่ละรหัส</b>
-  <div id="sum" style="margin-top:6px"></div>
-  <div class="row"><span><b>รวมทั้งหมด</b></span><span class="num total" id="grand">0.00</span></div>
-  <div style="display:flex;gap:8px;margin-top:8px">
-    <button class="btn alt" onclick="copySum()">คัดลอกสรุป</button>
-    <button class="btn alt" onclick="copyAll()">คัดลอกรายการทั้งหมด</button>
+  <b>1) วางข้อมูลจากบันทึกประจำวัน</b>
+  <div class="modes">
+    <label><input type="radio" name="k" value="in" checked>💚 รายรับ (401–408)</label>
+    <label><input type="radio" name="k" value="out">🧡 รายจ่าย (501–512)</label>
   </div>
-  <div class="sm" id="msg" style="margin-top:6px"></div>
+  <div class="sm" style="margin-bottom:6px">คัดลอกแถวจากบันทึกรายรับหรือรายจ่ายประจำวัน (เดือน, วันที่, เอกสาร, รายการ, จำนวนเงิน) ไม่ต้องรวมหัวตาราง วางทีละชนิด การวางชนิดเดิมซ้ำจะแทนที่ของเดิม</div>
+  <textarea id="in" placeholder="วางที่นี่"></textarea>
+  <button class="btn" onclick="go()">จัดรหัสบัญชีอัตโนมัติ</button>
+  <button class="btn alt" onclick="$('in').value='';$('in').focus()">🗑️ ลบข้อความในช่องวาง</button>
+  <button class="btn alt" onclick="rows=[];render()">ล้างทั้งหมด</button>
 </div>
 
-<div class="card">
-  <b>รายการที่บันทึก</b> <span class="sm" id="cnt"></span>
-  <div id="list" style="margin-top:6px"></div>
-  <button class="btn alt" style="margin-top:8px" onclick="clearAll()">ล้างทั้งหมด</button>
+<div class="card" id="rc" style="display:none">
+  <b>2) ตรวจรหัส</b> <span class="sm" id="info"></span>
+  <label class="sm" style="display:block;margin:4px 0"><input type="checkbox" id="so" checked onchange="render()"> เรียงตามวันที่</label>
+  <div class="scroll"><table id="tb"></table></div>
+</div>
+
+<div class="card" id="sc" style="display:none">
+  <b>3) สรุปยอดแต่ละประเภท</b>
+  <div class="f"><span>ยอดยกมา</span><input type="number" id="op" placeholder="0" oninput="upd()"></div>
+  <div id="sm"></div>
+  <div class="f"><span>คงเหลือตามสมุดเงินสด</span><input type="number" id="ac" placeholder="ไม่บังคับ" oninput="upd()"></div>
+  <div id="chk"></div>
+  <button class="btn" id="cs" onclick="cp(sumTxt,'m1')">คัดลอกสรุปยอด</button>
+  <div class="sm" id="m1"></div>
+</div>
+
+<div class="card" id="oc" style="display:none">
+  <b>4) รายการสำหรับลงสมุดเงินสด</b>
+  <div class="sm" style="margin:4px 0 6px">วันที่ | ใบเสร็จ/ใบจ่าย | เลขที่ | รายการ | รหัสบัญชี | เดบิต (ไม่มีคงเหลือ ให้ลากสูตรในชีต)</div>
+  <textarea id="out" readonly></textarea>
+  <button class="btn" id="co" onclick="cp($('out').value,'m2')">คัดลอกรายการ</button>
+  <div class="sm" id="m2"></div>
+</div>
+
+<div class="card" id="vc">
+  <b>💾 บันทึก / เรียกคืนข้อมูล</b>
+  <div class="sm" id="vs" style="margin:4px 0 6px">กำลังเตรียมที่เก็บข้อมูล...</div>
+  <input type="text" id="sn" placeholder="ชื่อชุดข้อมูล เช่น พ.ย.–ธ.ค. 2568" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit">
+  <button class="btn" onclick="saveSet()">💾 บันทึกชุดนี้ (รายการ + ยอดยกมา + ยอดตามสมุดเงินสด)</button>
+  <div class="sm" id="vm" style="margin-top:6px"></div>
+  <div id="sl" style="margin-top:8px"></div>
 </div>
 
 <script>
-const CODES=[
-["401","รายได้ค่ากิจกรรมคณะสี",["คณะสี"]],
-["402","รายได้ค่าเสื้อกีฬา",["เสื้อกีฬา"]],
-["403","รายได้ค่าบำรุงสมาคม",["บำรุงสมาคม","สมาคม"]],
-["404","รายได้ค่ากิจกรรมส่งเสริมการศึกษา",["ส่งเสริมการศึกษา"]],
-["405","รายได้ค่ากิจกรรมชุมนุมและสาธารณประโยชน์",["ชุมนุม","สาธารณประโยชน์"]],
-["406","รายได้ค่าเบี้ยประกันภัย",["เบี้ยประกัน","ประกันภัย","ประกัน","อุบัติเหตุ"]],
-["407","รายได้จากการบริจาค",["บริจาค"]],
-["408","ดอกเบี้ยรับ",["ดอกเบี้ย"]]];
-let sel=null,data=[],pend=[];
-try{data=JSON.parse(localStorage.getItem("inc")||"[]")}catch(e){}
-const save=()=>{try{localStorage.setItem("inc",JSON.stringify(data))}catch(e){}};
+const IN=[["401","ค่ากิจกรรมคณะสี",["คณะสี"]],["402","ค่าเสื้อกีฬา",["เสื้อกีฬา"]],["403","ค่าบำรุงสมาคม",["บำรุงสมาคม","สมาคม"]],["404","กิจกรรมส่งเสริมการศึกษา",["ส่งเสริมการศึกษา"]],["405","กิจกรรมชุมนุมและสาธารณประโยชน์",["ชุมนุม","สาธารณประโยชน์"]],["406","ค่าเบี้ยประกันภัย",["เบี้ยประกัน","ประกันภัย","ประกัน","อุบัติเหตุ"]],["407","รายได้จากการบริจาค",["บริจาค"]],["408","ดอกเบี้ยรับ",["ดอกเบี้ย"]]];
+const OUT=[["501","ค่าใช้จ่ายในการจัดกิจกรรม",["วัสดุ","อุปกรณ์","จัดกิจกรรม"]],["502","ค่าเสื้อกีฬา",["เสื้อกีฬา","เสื้อพละ"]],["503","ค่าใช้จ่ายในการส่งเสริมการ",["พี่เลี้ยง","เด็กพิการ","สมทบ","ลูกจ้าง","ส่งเสริม"]],["504","ค่าใช้จ่ายในกิจกรรมชุมนุม",["ชุมนุม"]],["505","ค่าใช้จ่ายในกิจกรรม",["สนับสนุน","สาธารณะ"]],["506","ค่าเบี้ยประกัน",["เบี้ยประกัน","ประกัน"]],["507","ค่าใช้จ่ายในการสร้างขวัญและ",["ทำบุญ","งานศพ","ใส่ซอง","ขวัญ","เช่ารถ","ค่าเช่า","เหมารถ","รถบัส"]],["508","ค่าใช้จ่ายในการประชุม",["ประชุม"]],["509","ค่าใช้จ่ายในการอมรม จัดงาน",["อบรม","อมรม","จัดงาน","อาหาร"]],["510","ภาษีเงินได้",["ภาษี"]],["511","ค่าทำบัญชีและสอบบัญชี",["ทำบัญชี","สอบบัญชี","บัญชี"]],["512","(ยังไม่กำหนด)",[]]];
+const MO={"มค":"ม.ค.","กพ":"ก.พ.","มีค":"มี.ค.","เมย":"เม.ย.","พค":"พ.ค.","มิย":"มิ.ย.","กค":"ก.ค.","สค":"ส.ค.","กย":"ก.ย.","ตค":"ต.ค.","พย":"พ.ย.","ธค":"ธ.ค."};
+const MN=Object.fromEntries(Object.values(MO).map((m,i)=>[m,i+1]));
+const $=id=>document.getElementById(id);
 const fmt=n=>n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
-function tab(n){p1.classList.toggle("hide",n!=1);p2.classList.toggle("hide",n!=2);t1.classList.toggle("on",n==1);t2.classList.toggle("on",n==2)}
-function chips(){document.getElementById("chips").innerHTML=CODES.map(c=>`<button class="chip ${sel==c[0]?"on":""}" onclick="sel='${c[0]}';chips()"><b>${c[0]}</b>${c[1].replace("รายได้ค่า","").replace("รายได้จาก","")}</button>`).join("")}
-function addOne(){const a=parseFloat(amt.value);if(!sel){msg.textContent="กรุณาเลือกรหัสก่อน";return}if(!a){msg.textContent="กรุณาใส่จำนวนเงิน";return}
-data.push({c:sel,a,n:note.value});amt.value="";note.value="";msg.textContent="";save();render()}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const norm=s=>s.replace(/[\s\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/g,"");
 const bg=s=>{const r=new Set();for(let i=0;i<s.length-1;i++)r.add(s.slice(i,i+2));return r};
-function guess(t){t=norm(t);const tb=bg(t);let best="",bs=0;
-for(const c of CODES)for(const k of c[2]){const n=norm(k);if(t.includes(n))return c[0];const kb=bg(n);if(!kb.size)continue;let h=0;kb.forEach(x=>{if(tb.has(x))h++});const s=h/kb.size;if(s>bs){bs=s;best=c[0]}}
-return bs>=0.7?best:""}
-function parse(){pend=[];paste.value.split("\n").forEach(l=>{l=l.trim();if(!l)return;
-const m=l.match(/[\d,]+(\.\d+)?\s*$/);const a=m?parseFloat(m[0].replace(/,/g,"")):0;const d=m?l.slice(0,m.index).trim():l;
-pend.push({d,a,c:guess(d)})});
-pv.innerHTML=pend.map((p,i)=>`<div class="pv"><span>${esc(p.d)} <b class="num">${p.a?fmt(p.a):""}</b></span><select onchange="pend[${i}].c=this.value"><option value="">? เลือก</option>${CODES.map(c=>`<option value="${c[0]}" ${p.c==c[0]?"selected":""}>${c[0]}</option>`).join("")}</select></div>`).join("")||"<span class='sm'>ไม่พบรายการ</span>";
-okAll.classList.toggle("hide",!pend.length);cpCodes.classList.toggle("hide",!pend.length)}
-function addAll(){const bad=pend.filter(p=>!p.c).length;if(bad){msg.textContent="ยังมี "+bad+" รายการที่ไม่ได้เลือกรหัส";return}
-pend.forEach(p=>{if(p.a>0)data.push({c:p.c,a:p.a,n:p.d})});pend=[];pv.innerHTML="";paste.value="";okAll.classList.add("hide");msg.textContent="";save();render()}
-const esc=s=>s.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
-function del(i){data.splice(i,1);save();render()}
-function clearAll(){if(confirm("ล้างรายการทั้งหมด?")){data=[];save();render()}}
-function totals(){const t={};CODES.forEach(c=>t[c[0]]=0);data.forEach(d=>t[d.c]+=d.a);return t}
-function render(){const t=totals();let g=0;
-sum.innerHTML=CODES.map(c=>{g+=t[c[0]];const k=data.filter(d=>d.c==c[0]).length;return `<div class="row"><span><b>${c[0]}</b> ${c[1].replace("รายได้ค่า","").replace("รายได้จาก","")} <span class="sm">(${k})</span></span><span class="num">${fmt(t[c[0]])}</span></div>`}).join("");
-grand.textContent=fmt(g);cnt.textContent="("+data.length+")";
-list.innerHTML=data.map((d,i)=>`<div class="row"><span><b>${d.c}</b> ${esc(d.n||"")}</span><span><span class="num">${fmt(d.a)}</span> <button class="x" onclick="del(${i})">✕</button></span></div>`).reverse().join("")||"<span class='sm'>ยังไม่มีรายการ</span>"}
-async function cp(txt){try{await navigator.clipboard.writeText(txt);msg.textContent="คัดลอกแล้ว วางใน Sheets ได้เลย"}catch(e){msg.textContent="คัดลอกไม่สำเร็จ";}}
-function copySum(){const t=totals();cp(CODES.map(c=>c[0]+"\t"+c[1]+"\t"+t[c[0]]).join("\n"))}
-function copyAll(){cp(data.map(d=>d.c+"\t"+(d.n||"")+"\t"+d.a).join("\n"))}
-chips();render();
+function guess(t,L){t=norm(t);const tb=bg(t);let best="",bl=0,fz="",fs=0;
+for(const c of L)for(const k of c[2]){const n=norm(k);
+if(t.includes(n)){if(n.length>bl){bl=n.length;best=c[0]}continue}
+const kb=bg(n);if(!kb.size)continue;let h=0;kb.forEach(x=>{if(tb.has(x))h++});const s=h/kb.size;if(s>fs){fs=s;fz=c[0]}}
+return best||(fs>=0.7?fz:"")}
+function tsv(t){const R=[];let r=[],c="",q=false;
+for(let i=0;i<t.length;i++){const ch=t[i];
+if(q){if(ch=='"'){if(t[i+1]=='"'){c+='"';i++}else q=false}else c+=ch}
+else if(ch=='"'&&c==="")q=true;
+else if(ch=="\t"){r.push(c);c=""}
+else if(ch=="\n"||ch=="\r"){if(ch=="\r"&&t[i+1]=="\n")i++;r.push(c);R.push(r);r=[];c=""}
+else c+=ch}
+if(c!==""||r.length){r.push(c);R.push(r)}
+return R.filter(r=>r.some(x=>x.trim()))}
+let rows=[],sumTxt="";
+const DOC=/^[\u0E00-\u0E7F]{1,4}\s*\d+(\/[\d-]+)?$/;
+const kind=()=>document.querySelector('input[name=k]:checked').value;
+function go(){
+const k=kind(),L=k=="in"?IN:OUT;let mo="",dy="",doc="",skip=0;
+rows=rows.filter(r=>r.k!=k);
+tsv($("in").value).forEach(c=>{
+const x=c.map(s=>s.trim());
+if(x[0]&&!/\d/.test(x[0]))mo=x[0].replace(/[.\s]/g,"");
+if(/^\d{1,2}$/.test(x[1]||""))dy=x[1];
+const dm=x.find(s=>DOC.test(s));if(dm)doc=dm;
+let a=0;for(let i=x.length-1;i>=2;i--){if(/^[\d,]+(\.\d+)?$/.test(x[i])){a=parseFloat(x[i].replace(/,/g,""));break}}
+if(x.some(s=>/^(ยอดยก|ยกไป|รวม)/.test(s))){skip++;if(/ยอดยก/.test(x.join(""))&&a&&!$("op").value)$("op").value=a;return}
+const d=x.slice(2).filter(s=>/[\u0E00-\u0E7F]/.test(s)&&!DOC.test(s)).pop();
+if(!d||!a)return;
+const m=MO[mo]||mo;
+rows.push({k,d:dy+" "+m,mn:MN[m]||0,dn:+dy||0,doc,desc:d,code:guess(d,L),a})});
+$("info").dataset.skip=skip;render()}
+function render(){
+const show=rows.length>0;$("rc").style.display=$("sc").style.display=$("oc").style.display=show?"block":"none";
+const m0=(rows.find(r=>r.mn)||{}).mn||1;
+const key=window.key=r=>(((r.mn?(r.mn-m0+12)%12:0)*100+r.dn)*2)+(r.k=="out"?1:0);
+const ord=rows.map((_,i)=>i);if($("so").checked)ord.sort((a,b)=>key(rows[a])-key(rows[b]));
+window.ord=ord;
+$("tb").innerHTML="<tr><th></th><th>วันที่</th><th>เลขที่</th><th>รายการ</th><th>รหัส</th><th>จำนวน</th></tr>"+ord.map(i=>{const r=rows[i],L=r.k=="in"?IN:OUT;
+return `<tr><td>${r.k=="in"?"💚":"🧡"}</td><td>${esc(r.d)}</td><td>${esc(r.doc)}</td><td>${esc(r.desc)}</td><td><select onchange="rows[${i}].code=this.value;upd()"><option value="">? เลือก</option>${L.map(c=>`<option value="${c[0]}" ${r.code==c[0]?"selected":""}>${c[0]}</option>`).join("")}</select></td><td class="n">${fmt(r.a)}</td></tr>`}).join("");
+$("info").textContent=`รับ ${rows.filter(r=>r.k=="in").length} · จ่าย ${rows.filter(r=>r.k=="out").length} รายการ`;
+upd()}
+function upd(){
+const q=x=>/[\t\n"]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x;
+const S={};[...IN,...OUT].forEach(c=>S[c[0]]=0);let bad=0,ti=0,to=0,ri=0,ro=0;
+rows.forEach(r=>{if(r.k=="in")ri+=r.a;else ro+=r.a;if(!r.code)bad++;else{S[r.code]+=r.a;if(r.k=="in")ti+=r.a;else to+=r.a}});
+$("out").value=(window.ord||[]).map(i=>{const r=rows[i];return [r.d,r.k=="in"?"ใบเสร็จ":"ใบจ่าย",r.doc,r.desc,r.code,r.a].map(q).join("\t")}).join("\n");
+const op=parseFloat($("op").value)||0,bal=op+ti-to;
+const ds=rows.filter(r=>r.dn).slice().sort((a,b)=>window.key(a)-window.key(b));const per=ds.length?(ds[0].d===ds[ds.length-1].d?ds[0].d:ds[0].d+" – "+ds[ds.length-1].d):"";
+const line=(c,cls)=>`<div class="row ${S[c[0]]?"":"z"}"><span><b>${c[0]}</b> ${esc(c[1])}</span><span>${fmt(S[c[0]])}</span></div>`;
+$("sm").innerHTML=`<div class="sm">ช่วงวันที่: ${per||"-"}</div><h3>รายรับ</h3>${IN.map(line).join("")}<div class="row t"><span>รวมรายรับ</span><span>${fmt(ti)}</span></div><h3>รายจ่าย</h3>${OUT.map(line).join("")}<div class="row t"><span>รวมรายจ่าย</span><span>${fmt(to)}</span></div><div class="row t"><span>คงเหลือ (ยอดยกมา + รับ − จ่าย)</span><span>${fmt(bal)}</span></div>`;
+const ac=$("ac").value===""?null:parseFloat($("ac").value);
+let h=bad?`<div class="bad">ยังมี ${bad} รายการไม่มีรหัส ยอดสรุปยังไม่ครบ กรุณาเลือกรหัสก่อนคัดลอก</div>`:`<div class="ok">รวมตามรหัสตรงกับรวมรายการ (รับ ${fmt(ri)} · จ่าย ${fmt(ro)}) ✓</div>`;
+if(ac!==null){const d=Math.round((ac-bal)*100)/100;h+=d===0?`<div class="ok">ตรงกับสมุดเงินสด ✓</div>`:`<div class="bad">ต่างจากสมุดเงินสด ${fmt(d)} บาท</div>`}
+$("chk").innerHTML=h;
+const T=[["ช่วงวันที่",per,""],["ยอดยกมา","",op]];IN.forEach(c=>T.push([c[0],c[1],S[c[0]]]));T.push(["","รวมรายรับ",ti]);OUT.forEach(c=>T.push([c[0],c[1],S[c[0]]]));T.push(["","รวมรายจ่าย",to],["","คงเหลือ",bal]);
+sumTxt=T.map(r=>r.join("\t")).join("\n");
+$("cs").disabled=$("co").disabled=!!bad}
+let ST=null;
+const LS={async list(){try{return JSON.parse(localStorage.getItem("incomeCoder_sets")||"[]")}catch(e){return[]}},
+async save(o){const a=await this.list();a.push({id:"s"+Date.now(),...o});try{localStorage.setItem("incomeCoder_sets",JSON.stringify(a))}catch(e){}},
+async del(id){const a=(await this.list()).filter(x=>x.id!==id);try{localStorage.setItem("incomeCoder_sets",JSON.stringify(a))}catch(e){}}};
+async function initST(){
+try{if(window.claude){const db=await claude.use("db"),u=await claude.use("user");
+if(db&&u){const id=await u.id();if(id){const col=db.collection("data/users/"+id);
+ST={note:"เก็บในบัญชีของคุณครู เปิดจากทุกเครื่องที่ล็อกอินได้",
+async list(){const s=await col.get();return s.docs.map(d=>({id:d.id,...d.data()}))},
+async save(o){await col.doc("s"+Date.now()).set(o)},
+async del(id){await col.doc(id).delete()}}}}}}catch(e){}
+if(!ST)ST=Object.assign({note:"เก็บในเบราว์เซอร์เครื่องนี้เท่านั้น (ถ้าล้างประวัติจะหาย)"},LS);
+$("vs").textContent=ST.note;showSets()}
+async function saveSet(){
+if(!rows.length){$("vm").textContent="ยังไม่มีข้อมูลให้บันทึก";return}
+const n=$("sn").value.trim()||("ชุด "+new Date().toLocaleDateString("th-TH"));
+try{await ST.save({name:n,at:Date.now(),op:$("op").value,ac:$("ac").value,rows:rows});$("vm").textContent="บันทึกแล้ว";$("sn").value="";showSets()}catch(e){$("vm").textContent="บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง"}}
+async function showSets(){
+let L=[];try{L=await ST.list()}catch(e){$("vm").textContent="โหลดรายการที่บันทึกไม่ได้"}
+L.sort((a,b)=>(b.at||0)-(a.at||0));
+$("sl").innerHTML=L.map(s=>`<div class="row"><span><b>${esc(s.name||"")}</b><br><span class="sm">${new Date(s.at||0).toLocaleString("th-TH")} · ${(s.rows||[]).length} รายการ</span></span><span><button class="btn alt" style="width:auto;padding:6px 10px;margin:0" onclick="loadSet('${s.id}')">เปิด</button> <button class="btn alt" style="width:auto;padding:6px 10px;margin:0" onclick="delSet('${s.id}')">ลบ</button></span></div>`).join("")||'<div class="sm">ยังไม่มีชุดที่บันทึก</div>'}
+async function loadSet(id){const s=(await ST.list()).find(x=>x.id===id);if(!s)return;
+rows=JSON.parse(JSON.stringify(s.rows||[]));$("op").value=s.op||"";$("ac").value=s.ac||"";render();$("vm").textContent="เปิดชุด “"+(s.name||"")+"” แล้ว"}
+async function delSet(id){if(!confirm("ลบชุดนี้?"))return;try{await ST.del(id)}catch(e){}showSets()}
+initST();
+async function cp(t,id){try{await navigator.clipboard.writeText(t);$(id).textContent="คัดลอกแล้ว ไปวางในชีตได้เลย"}
+catch(e){const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();document.execCommand("copy");a.remove();$(id).textContent="คัดลอกแล้ว"}}
 </script>
 </body>
 </html>
