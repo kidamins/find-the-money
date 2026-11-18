@@ -48,7 +48,7 @@ h3{margin:12px 0 4px;font-size:.95rem}
   <textarea id="in" placeholder="วางที่นี่"></textarea>
   <button class="btn" onclick="go()">จัดรหัสบัญชีอัตโนมัติ</button>
   <button class="btn alt" onclick="$('in').value='';$('in').focus()">🗑️ ลบข้อความในช่องวาง</button>
-  <button class="btn alt" onclick="rows=[];render()">ล้างทั้งหมด</button>
+  <button class="btn alt" onclick="rows=[];opens=[];$('op').value='';render();applyOpen()">ล้างทั้งหมด</button>
 </div>
 
 <div class="card" id="rc" style="display:none">
@@ -60,6 +60,7 @@ h3{margin:12px 0 4px;font-size:.95rem}
 <div class="card" id="sc" style="display:none">
   <b>3) สรุปยอดแต่ละประเภท</b>
   <div class="f"><span>ยอดยกมา</span><input type="number" id="op" placeholder="0" oninput="upd()"></div>
+  <div class="sm" id="on" style="margin-bottom:4px"></div>
   <div id="sm"></div>
   <div class="f"><span>คงเหลือตามสมุดเงินสด</span><input type="number" id="ac" placeholder="ไม่บังคับ" oninput="upd()"></div>
   <div id="chk"></div>
@@ -108,26 +109,26 @@ else if(ch=="\n"||ch=="\r"){if(ch=="\r"&&t[i+1]=="\n")i++;r.push(c);R.push(r);r=
 else c+=ch}
 if(c!==""||r.length){r.push(c);R.push(r)}
 return R.filter(r=>r.some(x=>x.trim()))}
-let rows=[],sumTxt="";
+let rows=[],sumTxt="",opens=[];
 const DOC=/^[\u0E00-\u0E7F]{1,4}\s*\d+(\/[\d-]+)?$/;
 const kind=()=>document.querySelector('input[name=k]:checked').value;
 function go(){
 const k=kind(),L=k=="in"?IN:OUT;let mo="",dy="",doc="",skip=0,dup=0;
-if(!$("acc").checked)rows=rows.filter(r=>r.k!=k);
+if(!$("acc").checked){rows=rows.filter(r=>r.k!=k);if(k=="in")opens=[]}
 tsv($("in").value).forEach(c=>{
 const x=c.map(s=>s.trim());
 if(x[0]&&!/\d/.test(x[0]))mo=x[0].replace(/[.\s]/g,"");
 if(/^\d{1,2}$/.test(x[1]||""))dy=x[1];
 const dm=x.find(s=>DOC.test(s));if(dm)doc=dm;
-let a=0;for(let i=x.length-1;i>=2;i--){if(/^[\d,]+(\.\d+)?$/.test(x[i])){a=parseFloat(x[i].replace(/,/g,""));break}}
-if(x.some(s=>/^(ยอดยก|ยกไป|รวม)/.test(s))){skip++;if(/ยอดยก/.test(x.join(""))&&a&&!$("op").value)$("op").value=a;return}
+let a=0;for(let i=x.length-1;i>=2;i--){if(/^฿?[\d,]+(\.\d+)?(\s*บาท)?$/.test(x[i])){a=parseFloat(x[i].replace(/[^\d.]/g,""));break}}
+if(x.some(s=>/ยอดยก|ยกไป|^รวม/.test(s))){skip++;if(/ยอดยก/.test(x.join(""))&&a&&k=="in"){const m=MO[mo]||mo;opens.push({a,d:dy+" "+m,mn:MN[m]||0,dn:+dy||0,k:"in"})}return}
 const d=x.slice(2).filter(s=>/[\u0E00-\u0E7F]/.test(s)&&!DOC.test(s)).pop();
 if(!d||!a)return;
 const m=MO[mo]||mo;
 const nr={k,d:dy+" "+m,mn:MN[m]||0,dn:+dy||0,doc,desc:d,code:guess(d,L),a};
 if(doc&&rows.some(r=>r.k==k&&r.d==nr.d&&r.doc==doc&&r.desc==d&&r.a==a)){dup++;return}
 rows.push(nr)});
-render();$("info").textContent+=(dup?" · ข้ามรายการซ้ำ "+dup:"")}
+render();$("info").textContent+=(dup?" · ข้ามรายการซ้ำ "+dup:"");applyOpen()}
 function render(){
 const show=rows.length>0;$("rc").style.display=$("sc").style.display=$("oc").style.display=show?"block":"none";
 const m0=(rows.find(r=>r.mn)||{}).mn||1;
@@ -182,6 +183,13 @@ else{rows=nr;$("op").value=s.op||"";$("ac").value=s.ac||""}
 render();$("vm").textContent="เปิดชุด “"+(s.name||"")+"” แล้ว"+(add?" (เพิ่มต่อ"+(dup?" ข้ามซ้ำ "+dup:"")+")":"")}
 async function delSet(id){if(!confirm("ลบชุดนี้?"))return;try{await ST.del(id)}catch(e){}showSets()}
 initST();
+function applyOpen(){
+const n=$("on"),kf=window.key||(()=>0);
+if(!opens.length){n.textContent="ไม่พบแถว “ยอดยกมา” ในข้อความที่วาง (กรอกเองได้)";upd();return}
+const o=opens.slice().sort((a,b)=>kf(a)-kf(b))[0];
+$("op").value=o.a;
+n.textContent="อ่านจากข้อความที่วาง: "+opens.map(x=>fmt(x.a)+" ("+x.d+")").join(" · ")+" → ใช้ค่าของวันแรกสุด";
+upd()}
 async function cp(t,id){try{await navigator.clipboard.writeText(t);$(id).textContent="คัดลอกแล้ว ไปวางในชีตได้เลย"}
 catch(e){const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();document.execCommand("copy");a.remove();$(id).textContent="คัดลอกแล้ว"}}
 </script>
