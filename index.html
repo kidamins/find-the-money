@@ -32,6 +32,8 @@ td select{padding:4px;min-width:84px}
 .row.t{font-weight:700;border-bottom:2px solid var(--line)}
 h3{margin:12px 0 4px;font-size:.95rem}
 .f{display:flex;align-items:center;gap:8px;margin:6px 0}.f input{max-width:170px}
+.r3{display:grid;grid-template-columns:1fr 92px 104px;gap:6px}.r3 span+span{text-align:right;font-variant-numeric:tabular-nums}.hd{color:var(--mute);font-size:.8rem}
+details{margin:6px 0}details>summary{cursor:pointer;padding:4px 0}
 </style>
 </head>
 <body>
@@ -51,6 +53,16 @@ h3{margin:12px 0 4px;font-size:.95rem}
   <button class="btn alt" onclick="rows=[];opens=[];$('op').value='';render();applyOpen()">ล้างทั้งหมด</button>
 </div>
 
+<div class="card" id="cc">
+  <b>📅 ยอดสะสมจากเดือนก่อน</b>
+  <div class="sm" id="cn" style="margin:4px 0 6px">ยังไม่มียอดสะสมจากเดือนก่อน (เดือนแรกไม่ต้องใส่)</div>
+  <details><summary class="sm">วางสรุปยอดของเดือนก่อน เพื่อให้ยอดต่อเนื่อง</summary>
+  <textarea id="ci" placeholder="วางสรุปยอดที่ทำไว้แล้ว (รหัส รายการ จำนวนเงิน)"></textarea>
+  <button class="btn alt" onclick="setCarry()">ใช้เป็นยอดสะสมยกมา</button></details>
+  <button class="btn" onclick="closeMonth()">✅ ปิดเดือนนี้ → เริ่มเดือนใหม่</button>
+  <button class="btn alt" onclick="clearCarry()">ล้างยอดสะสม</button>
+</div>
+
 <div class="card" id="rc" style="display:none">
   <b>2) ตรวจรหัส</b> <span class="sm" id="info"></span>
   <label class="sm" style="display:block;margin:4px 0"><input type="checkbox" id="so" checked onchange="render()"> เรียงตามวันที่</label>
@@ -59,20 +71,22 @@ h3{margin:12px 0 4px;font-size:.95rem}
 
 <div class="card" id="sc" style="display:none">
   <b>3) สรุปยอดแต่ละประเภท</b>
-  <div class="f"><span>ยอดยกมา</span><input type="number" id="op" placeholder="0" oninput="upd()"></div>
+  <div class="f"><span>ยอดยกมา (ไม่บังคับ)</span><input type="number" id="op" placeholder="0" oninput="upd()"></div>
   <div class="sm" id="on" style="margin-bottom:4px"></div>
   <div id="sm"></div>
   <div class="f"><span>คงเหลือตามสมุดเงินสด</span><input type="number" id="ac" placeholder="ไม่บังคับ" oninput="upd()"></div>
   <div id="chk"></div>
   <button class="btn" id="cs" onclick="cp(sumTxt,'m1')">คัดลอกสรุปยอด</button>
   <div class="sm" id="m1"></div>
+  <h3>ยอดรายวัน (กระทบแต่ละวัน)</h3><div class="sm">กดที่วันเพื่อดูยอดและคัดลอกทีละวัน</div><div id="ds"></div>
 </div>
 
 <div class="card" id="oc" style="display:none">
   <b>4) รายการสำหรับลงสมุดเงินสด</b>
-  <div class="sm" style="margin:4px 0 6px">วันที่ | ใบเสร็จ/ใบจ่าย | เลขที่ | รายการ | รหัสบัญชี | เดบิต (ไม่มีคงเหลือ ให้ลากสูตรในชีต)</div>
-  <textarea id="out" readonly></textarea>
-  <button class="btn" id="co" onclick="cp($('out').value,'m2')">คัดลอกรายการ</button>
+  <div class="sm" style="margin:4px 0 6px">วันที่ | ใบเสร็จ/ใบจ่าย | เลขที่ | รายการ | รหัสบัญชี | เดบิต (ไม่มีคงเหลือ ให้ลากสูตรในชีต) · กดที่วันเพื่อคัดลอกทีละวัน</div>
+  <div id="dl"></div>
+  <textarea id="out" readonly style="display:none"></textarea>
+  <button class="btn alt" id="co" onclick="cp($('out').value,'m2')">คัดลอกทั้งเดือน (ทุกวัน)</button>
   <div class="sm" id="m2"></div>
 </div>
 
@@ -109,7 +123,7 @@ else if(ch=="\n"||ch=="\r"){if(ch=="\r"&&t[i+1]=="\n")i++;r.push(c);R.push(r);r=
 else c+=ch}
 if(c!==""||r.length){r.push(c);R.push(r)}
 return R.filter(r=>r.some(x=>x.trim()))}
-let rows=[],sumTxt="",opens=[];
+let rows=[],sumTxt="",opens=[],carry={c:{},start:"",end:""};
 const DOC=/^[\u0E00-\u0E7F]{1,4}\s*\d+(\/[\d-]+)?$/;
 const kind=()=>document.querySelector('input[name=k]:checked').value;
 function go(){
@@ -130,7 +144,7 @@ if(doc&&rows.some(r=>r.k==k&&r.d==nr.d&&r.doc==doc&&r.desc==d&&r.a==a)){dup++;re
 rows.push(nr)});
 render();$("info").textContent+=(dup?" · ข้ามรายการซ้ำ "+dup:"");applyOpen()}
 function render(){
-const show=rows.length>0;$("rc").style.display=$("sc").style.display=$("oc").style.display=show?"block":"none";
+const show=rows.length>0;$("rc").style.display=$("oc").style.display=show?"block":"none";$("sc").style.display=(show||Object.keys(carry.c).length)?"block":"none";
 const m0=(rows.find(r=>r.mn)||{}).mn||1;
 const key=window.key=r=>(((r.mn?(r.mn-m0+12)%12:0)*100+r.dn)*2)+(r.k=="out"?1:0);
 const ord=rows.map((_,i)=>i);if($("so").checked)ord.sort((a,b)=>key(rows[a])-key(rows[b]));
@@ -144,7 +158,8 @@ const q=x=>/[\t\n"]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x;
 const S={};[...IN,...OUT].forEach(c=>S[c[0]]=0);let bad=0,ti=0,to=0,ri=0,ro=0;
 rows.forEach(r=>{if(r.k=="in")ri+=r.a;else ro+=r.a;if(!r.code)bad++;else{S[r.code]+=r.a;if(r.k=="in")ti+=r.a;else to+=r.a}});
 $("out").value=(window.ord||[]).map(i=>{const r=rows[i];return [r.d,r.k=="in"?"ใบเสร็จ":"ใบจ่าย",r.doc,r.desc,r.code,r.a].map(q).join("\t")}).join("\n");
-const op=parseFloat($("op").value)||0,bal=op+ti-to;
+const C=carry.c,op=parseFloat($("op").value)||0;
+const cIn=IN.reduce((s,c)=>s+(C[c[0]]||0)+S[c[0]],0),cOut=OUT.reduce((s,c)=>s+(C[c[0]]||0)+S[c[0]],0),bal=op+cIn-cOut;
 const ds=rows.filter(r=>r.dn).slice().sort((a,b)=>window.key(a)-window.key(b));const per=ds.length?(ds[0].d===ds[ds.length-1].d?ds[0].d:ds[0].d+" – "+ds[ds.length-1].d):"";
 const line=(c,cls)=>`<div class="row ${S[c[0]]?"":"z"}"><span><b>${c[0]}</b> ${esc(c[1])}</span><span>${fmt(S[c[0]])}</span></div>`;
 $("sm").innerHTML=`<div class="sm">ช่วงวันที่: ${per||"-"}</div><h3>รายรับ</h3>${IN.map(line).join("")}<div class="row t"><span>รวมรายรับ</span><span>${fmt(ti)}</span></div><h3>รายจ่าย</h3>${OUT.map(line).join("")}<div class="row t"><span>รวมรายจ่าย</span><span>${fmt(to)}</span></div><div class="row t"><span>คงเหลือ (ยอดยกมา + รับ − จ่าย)</span><span>${fmt(bal)}</span></div>`;
@@ -152,12 +167,19 @@ const ac=$("ac").value===""?null:parseFloat($("ac").value);
 let h=bad?`<div class="bad">ยังมี ${bad} รายการไม่มีรหัส ยอดสรุปยังไม่ครบ กรุณาเลือกรหัสก่อนคัดลอก</div>`:`<div class="ok">รวมตามรหัสตรงกับรวมรายการ (รับ ${fmt(ri)} · จ่าย ${fmt(ro)}) ✓</div>`;
 if(ac!==null){const d=Math.round((ac-bal)*100)/100;h+=d===0?`<div class="ok">ตรงกับสมุดเงินสด ✓</div>`:`<div class="bad">ต่างจากสมุดเงินสด ${fmt(d)} บาท</div>`}
 $("chk").innerHTML=h;
-const T=[["ช่วงวันที่",per,""],["ยอดยกมา","",op]];IN.forEach(c=>T.push([c[0],c[1],S[c[0]]]));T.push(["","รวมรายรับ",ti]);OUT.forEach(c=>T.push([c[0],c[1],S[c[0]]]));T.push(["","รวมรายจ่าย",to],["","คงเหลือ",bal]);
+const cper=(carry.start||(ds[0]?ds[0].d:""))+" – "+(ds.length?ds[ds.length-1].d:(carry.end||""));
+const l3=c=>`<div class="row r3 ${S[c[0]]||C[c[0]]?"":"z"}"><span><b>${c[0]}</b> ${esc(c[1])}</span><span>${fmt(S[c[0]])}</span><span>${fmt((C[c[0]]||0)+S[c[0]])}</span></div>`;
+const tt=(a,b,c)=>`<div class="row r3 t"><span>${a}</span><span>${fmt(b)}</span><span>${fmt(c)}</span></div>`;
+$("sm").innerHTML=`<div class="sm">เดือนนี้: ${per||"-"} · สะสม: ${cper}</div><div class="row r3 hd"><span></span><span>เดือนนี้</span><span>สะสม</span></div><h3>รายรับ</h3>${IN.map(l3).join("")}${tt("รวมรายรับ",ti,cIn)}<h3>รายจ่าย</h3>${OUT.map(l3).join("")}${tt("รวมรายจ่าย",to,cOut)}${tt("คงเหลือ (สะสม)",ti-to,bal)}`;
+const T=[["ช่วงวันที่ (เดือนนี้)",per,"",""],["ช่วงวันที่ (สะสม)",cper,"",""],["รหัส","รายการ","เดือนนี้","สะสม"]];
+const tr=c=>[c[0],c[1],S[c[0]],(C[c[0]]||0)+S[c[0]]];
+IN.forEach(c=>T.push(tr(c)));T.push(["","รวมรายรับ",ti,cIn]);OUT.forEach(c=>T.push(tr(c)));T.push(["","รวมรายจ่าย",to,cOut],["","คงเหลือ (สะสม)",ti-to,bal]);
 sumTxt=T.map(r=>r.join("\t")).join("\n");
-$("cs").disabled=$("co").disabled=!!bad}
+days();$("cs").disabled=$("co").disabled=!!bad}
 let ST=null;
 const LS={async list(){try{return JSON.parse(localStorage.getItem("incomeCoder_sets")||"[]")}catch(e){return[]}},
 async save(o){const a=await this.list();a.push({id:"s"+Date.now(),...o});try{localStorage.setItem("incomeCoder_sets",JSON.stringify(a))}catch(e){}},
+async put(id,o){const a=(await this.list()).filter(x=>x.id!==id);a.push({id,...o});try{localStorage.setItem("incomeCoder_sets",JSON.stringify(a))}catch(e){}},
 async del(id){const a=(await this.list()).filter(x=>x.id!==id);try{localStorage.setItem("incomeCoder_sets",JSON.stringify(a))}catch(e){}}};
 async function initST(){
 try{if(window.claude){const db=await claude.use("db"),u=await claude.use("user");
@@ -165,16 +187,17 @@ if(db&&u){const id=await u.id();if(id){const col=db.collection("data/users/"+id)
 ST={note:"เก็บในบัญชีของคุณครู เปิดจากทุกเครื่องที่ล็อกอินได้",
 async list(){const s=await col.get();return s.docs.map(d=>({id:d.id,...d.data()}))},
 async save(o){await col.doc("s"+Date.now()).set(o)},
+async put(id,o){await col.doc(id).set(o)},
 async del(id){await col.doc(id).delete()}}}}}}catch(e){}
 if(!ST)ST=Object.assign({note:"เก็บในเบราว์เซอร์เครื่องนี้เท่านั้น (ถ้าล้างประวัติจะหาย)"},LS);
-$("vs").textContent=ST.note;showSets()}
+$("vs").textContent=ST.note;showSets();loadCarry()}
 async function saveSet(){
 if(!rows.length){$("vm").textContent="ยังไม่มีข้อมูลให้บันทึก";return}
 const n=$("sn").value.trim()||("ชุด "+new Date().toLocaleDateString("th-TH"));
 try{await ST.save({name:n,at:Date.now(),op:$("op").value,ac:$("ac").value,rows:rows});$("vm").textContent="บันทึกแล้ว";$("sn").value="";showSets()}catch(e){$("vm").textContent="บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง"}}
 async function showSets(){
 let L=[];try{L=await ST.list()}catch(e){$("vm").textContent="โหลดรายการที่บันทึกไม่ได้"}
-L.sort((a,b)=>(b.at||0)-(a.at||0));
+L=L.filter(s=>s.id!=="carry");L.sort((a,b)=>(b.at||0)-(a.at||0));
 $("sl").innerHTML=L.map(s=>`<div class="row"><span><b>${esc(s.name||"")}</b><br><span class="sm">${new Date(s.at||0).toLocaleString("th-TH")} · ${(s.rows||[]).length} รายการ</span></span><span><button class="btn alt" style="width:auto;padding:6px 10px;margin:0" onclick="loadSet('${s.id}')">เปิด</button> <button class="btn alt" style="width:auto;padding:6px 10px;margin:0" onclick="loadSet('${s.id}',1)">เพิ่มต่อ</button> <button class="btn alt" style="width:auto;padding:6px 10px;margin:0" onclick="delSet('${s.id}')">ลบ</button></span></div>`).join("")||'<div class="sm">ยังไม่มีชุดที่บันทึก</div>'}
 async function loadSet(id,add){const s=(await ST.list()).find(x=>x.id===id);if(!s)return;
 const nr=JSON.parse(JSON.stringify(s.rows||[]));let dup=0;
@@ -185,13 +208,55 @@ async function delSet(id){if(!confirm("ลบชุดนี้?"))return;try{aw
 initST();
 function applyOpen(){
 const n=$("on"),kf=window.key||(()=>0);
-if(!opens.length){n.textContent="ไม่พบแถว “ยอดยกมา” ในข้อความที่วาง (กรอกเองได้)";upd();return}
+if(!opens.length){n.textContent="";upd();return}
 const o=opens.slice().sort((a,b)=>kf(a)-kf(b))[0];
-$("op").value=o.a;
-n.textContent="อ่านจากข้อความที่วาง: "+opens.map(x=>fmt(x.a)+" ("+x.d+")").join(" · ")+" → ใช้ค่าของวันแรกสุด";
+
+n.textContent="พบแถวยอดยกมาในข้อความที่วาง (ไม่นำมาบวก ใช้ช่องยอดสะสมจากเดือนก่อนแทน): "+opens.map(x=>fmt(x.a)+" ("+x.d+")").join(" · ")+"";
 upd()}
-async function cp(t,id){try{await navigator.clipboard.writeText(t);$(id).textContent="คัดลอกแล้ว ไปวางในชีตได้เลย"}
-catch(e){const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();document.execCommand("copy");a.remove();$(id).textContent="คัดลอกแล้ว"}}
+function setCarry(){const c={},R=tsv($("ci").value);let st="",en="";
+R.forEach(x=>{x=x.map(s=>s.trim());
+if(/ช่วงวันที่/.test(x[0]||"")){const p=(x.slice(1).find(s=>s)||"").split(/\s*[–-]\s*/);st=p[0]||"";en=p[1]||""}
+const ci=x.findIndex(s=>/^[45]\d\d$/.test(s));if(ci<0)return;
+for(let i=x.length-1;i>ci;i--){if(/^฿?-?[\d,]+(\.\d+)?$/.test(x[i])){c[x[ci]]=parseFloat(x[i].replace(/[^\d.-]/g,""));break}}});
+if(!Object.keys(c).length){$("cn").textContent="ไม่พบรหัสบัญชีในข้อความที่วาง";return}
+carry={c,start:st,end:en};$("ci").value="";saveCarry();renderCarry();upd()}
+async function saveCarry(){try{await ST.put("carry",{name:"__carry__",at:Date.now(),carry})}catch(e){}}
+async function loadCarry(){try{const x=(await ST.list()).find(s=>s.id==="carry");if(x&&x.carry)carry=x.carry}catch(e){}renderCarry();upd()}
+function renderCarry(){const C=carry.c,k=Object.keys(C);
+const i=IN.reduce((s,c)=>s+(C[c[0]]||0),0),o=OUT.reduce((s,c)=>s+(C[c[0]]||0),0);
+$("cn").textContent=k.length?`ยอดสะสมยกมา ${carry.start} – ${carry.end} · รับ ${fmt(i)} · จ่าย ${fmt(o)} · คงเหลือ ${fmt(i-o)}`:"ยังไม่มียอดสะสมจากเดือนก่อน (เดือนแรกไม่ต้องใส่)";
+$("sc").style.display=(rows.length||k.length)?"block":"none"}
+function clearCarry(){if(!confirm("ล้างยอดสะสมทั้งหมด?"))return;carry={c:{},start:"",end:""};saveCarry();renderCarry();upd()}
+async function closeMonth(){
+if(!rows.length){$("cn").textContent="ยังไม่มีข้อมูลของเดือนนี้ให้ปิด";return}
+if(rows.some(r=>!r.code)){alert("ยังมีรายการที่ไม่มีรหัส กรุณาเลือกรหัสให้ครบก่อน");return}
+const ds=rows.filter(r=>r.dn).slice().sort((a,b)=>window.key(a)-window.key(b));
+const st=ds[0]?ds[0].d:"",en=ds.length?ds[ds.length-1].d:"";
+if(!confirm("ปิดเดือน "+st+" – "+en+" แล้วเริ่มเดือนใหม่?\n(ระบบจะบันทึกรายการเดือนนี้ไว้ให้ก่อน และเก็บยอดไว้เป็นยอดสะสม)"))return;
+try{await ST.save({name:"เดือน "+st+" – "+en,at:Date.now(),op:$("op").value,ac:$("ac").value,rows})}catch(e){}
+rows.forEach(r=>{carry.c[r.code]=(carry.c[r.code]||0)+r.a});
+carry.start=carry.start||st;carry.end=en;
+await saveCarry();rows=[];opens=[];$("ac").value="";$("on").textContent="";render();renderCarry();showSets()}
+function days(){
+const C=carry.c,run={...C},op=parseFloat($("op").value)||0,g={},order=[];
+const q=x=>/[\t\n"]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x;
+(window.ord||[]).forEach(i=>{const r=rows[i];if(!g[r.d]){g[r.d]=[];order.push(r.d)}g[r.d].push(r)});
+window.sTxt=[];window.dTxt=[];let hs="",hc="";
+order.forEach((d,n)=>{const R=g[d],ds={},miss=R.some(r=>!r.code);
+[...IN,...OUT].forEach(c=>ds[c[0]]=0);
+R.forEach(r=>{if(r.code){ds[r.code]+=r.a;run[r.code]=(run[r.code]||0)+r.a}});
+const di=IN.reduce((s,c)=>s+ds[c[0]],0),dx=OUT.reduce((s,c)=>s+ds[c[0]],0);
+const ci=IN.reduce((s,c)=>s+(run[c[0]]||0),0),cx=OUT.reduce((s,c)=>s+(run[c[0]]||0),0);
+const nz=[...IN,...OUT].filter(c=>ds[c[0]]);
+const T=[["วันที่",d,"",""],["รหัส","รายการ","วันนี้","สะสม"],...nz.map(c=>[c[0],c[1],ds[c[0]],run[c[0]]]),["","รวมรายรับ",di,ci],["","รวมรายจ่าย",dx,cx],["","คงเหลือสะสม",di-dx,op+ci-cx]];
+sTxt.push(T.map(r=>r.join("\t")).join("\n"));
+dTxt.push(R.map(r=>[r.d,r.k=="in"?"ใบเสร็จ":"ใบจ่าย",r.doc,r.desc,r.code,r.a].map(q).join("\t")).join("\n"));
+hs+=`<details><summary><b>${esc(d)}</b> · รับ ${fmt(di)} · จ่าย ${fmt(dx)} · คงเหลือสะสม ${fmt(op+ci-cx)}</summary><div class="row r3 hd"><span></span><span>วันนี้</span><span>สะสม</span></div>${nz.map(c=>`<div class="row r3"><span><b>${c[0]}</b> ${esc(c[1])}</span><span>${fmt(ds[c[0]])}</span><span>${fmt(run[c[0]]||0)}</span></div>`).join("")}<button class="btn alt" ${miss?"disabled":""} onclick="cp(sTxt[${n}],null,this)">คัดลอกยอดวันนี้</button></details>`;
+hc+=`<details><summary><b>${esc(d)}</b> · ${R.length} รายการ · ${fmt(R.reduce((s,r)=>s+r.a,0))}</summary>${R.map(r=>`<div class="row"><span>${esc(r.doc)} ${esc(r.desc)} <b>${r.code||"?"}</b></span><span>${fmt(r.a)}</span></div>`).join("")}<button class="btn alt" ${miss?"disabled":""} onclick="cp(dTxt[${n}],null,this)">คัดลอกรายการวันนี้</button></details>`});
+$("ds").innerHTML=hs;$("dl").innerHTML=hc}
+async function cp(t,id,b){let ok=true;try{await navigator.clipboard.writeText(t)}catch(e){try{const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();document.execCommand("copy");a.remove()}catch(e2){ok=false}}
+if(b){const o=b.textContent;b.textContent=ok?"คัดลอกแล้ว ✓":"คัดลอกไม่สำเร็จ";setTimeout(()=>b.textContent=o,1500)}
+else if(id&&$(id))$(id).textContent=ok?"คัดลอกแล้ว ไปวางในชีตได้เลย":"คัดลอกไม่สำเร็จ"}
 </script>
 </body>
 </html>
