@@ -34,6 +34,7 @@ h3{margin:12px 0 4px;font-size:.95rem}
 .f{display:flex;align-items:center;gap:8px;margin:6px 0}.f input{max-width:170px}
 .r3{display:grid;grid-template-columns:1fr 92px 104px;gap:6px}.r3 span+span{text-align:right;font-variant-numeric:tabular-nums}.hd{color:var(--mute);font-size:.8rem}
 details{margin:6px 0}details>summary{cursor:pointer;padding:4px 0}
+.di{width:88px;padding:4px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font:inherit}
 </style>
 </head>
 <body>
@@ -47,6 +48,8 @@ details{margin:6px 0}details>summary{cursor:pointer;padding:4px 0}
   </div>
   <div class="sm" style="margin-bottom:6px">คัดลอกแถวจากบันทึกรายรับหรือรายจ่ายประจำวัน (เดือน, วันที่, เอกสาร, รายการ, จำนวนเงิน) ไม่ต้องรวมหัวตาราง วางทีละชนิด หรือวางต่อกันหลายชุดเพื่อสะสมยอดได้</div>
   <label class="sm" style="display:block;margin-bottom:6px"><input type="checkbox" id="acc" checked> สะสมยอด: เพิ่มต่อจากข้อมูลที่วางไว้แล้ว (ไม่ติ๊ก = แทนที่ของเดิม)</label>
+  <div class="f"><span>เดือน/ปีของข้อมูล</span><select id="pm" style="max-width:120px"><option value="">ไม่ระบุ</option><option>ม.ค.</option><option>ก.พ.</option><option>มี.ค.</option><option>เม.ย.</option><option>พ.ค.</option><option>มิ.ย.</option><option>ก.ค.</option><option>ส.ค.</option><option>ก.ย.</option><option>ต.ค.</option><option>พ.ย.</option><option>ธ.ค.</option></select><input type="number" id="py" placeholder="ปี พ.ศ." style="max-width:110px"></div>
+  <div class="sm" style="margin-bottom:6px">ใช้เมื่อข้อมูลที่วางไม่มีเดือน (ถ้ามีวันที่ในข้อมูลอยู่แล้ว ระบบอ่านเอง) ชื่อเดือนนี้จะใช้ตอนปิดเดือนด้วย</div>
   <textarea id="in" placeholder="วางที่นี่"></textarea>
   <button class="btn" onclick="go()">จัดรหัสบัญชีอัตโนมัติ</button>
   <button class="btn alt" onclick="$('in').value='';$('in').focus()">🗑️ ลบข้อความในช่องวาง</button>
@@ -66,6 +69,7 @@ details{margin:6px 0}details>summary{cursor:pointer;padding:4px 0}
 <div class="card" id="rc" style="display:none">
   <b>2) ตรวจรหัส</b> <span class="sm" id="info"></span>
   <label class="sm" style="display:block;margin:4px 0"><input type="checkbox" id="so" checked onchange="render()"> เรียงตามวันที่</label>
+  <div class="sm bad" id="dw"></div>
   <div class="scroll"><table id="tb"></table></div>
 </div>
 
@@ -104,6 +108,7 @@ const IN=[["401","ค่ากิจกรรมคณะสี",["คณะส�
 const OUT=[["501","ค่าใช้จ่ายในการจัดกิจกรรม",["วัสดุ","อุปกรณ์","จัดกิจกรรม"]],["502","ค่าเสื้อกีฬา",["เสื้อกีฬา","เสื้อพละ"]],["503","ค่าใช้จ่ายในการส่งเสริมการ",["พี่เลี้ยง","เด็กพิการ","สมทบ","ลูกจ้าง","ส่งเสริม"]],["504","ค่าใช้จ่ายในกิจกรรมชุมนุม",["ชุมนุม"]],["505","ค่าใช้จ่ายในกิจกรรม",["สนับสนุน","สาธารณะ"]],["506","ค่าเบี้ยประกัน",["เบี้ยประกัน","ประกัน"]],["507","ค่าใช้จ่ายในการสร้างขวัญและ",["ทำบุญ","งานศพ","ใส่ซอง","ขวัญ","เช่ารถ","ค่าเช่า","เหมารถ","รถบัส"]],["508","ค่าใช้จ่ายในการประชุม",["ประชุม"]],["509","ค่าใช้จ่ายในการอมรม จัดงาน",["อบรม","อมรม","จัดงาน","อาหาร"]],["510","ภาษีเงินได้",["ภาษี"]],["511","ค่าทำบัญชีและสอบบัญชี",["ทำบัญชี","สอบบัญชี","บัญชี"]],["512","(ยังไม่กำหนด)",[]]];
 const MO={"มค":"ม.ค.","กพ":"ก.พ.","มีค":"มี.ค.","เมย":"เม.ย.","พค":"พ.ค.","มิย":"มิ.ย.","กค":"ก.ค.","สค":"ส.ค.","กย":"ก.ย.","ตค":"ต.ค.","พย":"พ.ย.","ธค":"ธ.ค."};
 const MN=Object.fromEntries(Object.values(MO).map((m,i)=>[m,i+1]));
+const MA=["",...Object.keys(MO)];
 const $=id=>document.getElementById(id);
 const fmt=n=>n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -127,30 +132,34 @@ let rows=[],sumTxt="",opens=[],carry={c:{},start:"",end:""};
 const DOC=/^[\u0E00-\u0E7F]{1,4}\s*\d+(\/[\d-]+)?$/;
 const kind=()=>document.querySelector('input[name=k]:checked').value;
 function go(){
-const k=kind(),L=k=="in"?IN:OUT;let mo="",dy="",doc="",skip=0,dup=0;
+const k=kind(),L=k=="in"?IN:OUT;let mo="",dy="",doc="",skip=0,dup=0,yr="";
 if(!$("acc").checked){rows=rows.filter(r=>r.k!=k);if(k=="in")opens=[]}
 tsv($("in").value).forEach(c=>{
 const x=c.map(s=>s.trim());
-if(x[0]&&!/\d/.test(x[0]))mo=x[0].replace(/[.\s]/g,"");
+if(x[0]&&MO[x[0].replace(/[.\s]/g,"")])mo=x[0].replace(/[.\s]/g,"");
 if(/^\d{1,2}$/.test(x[1]||""))dy=x[1];
+x.forEach(s=>{let m;
+if((m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/))){dy=String(+m[1]);mo=MA[+m[2]]||mo;yr=m[3]}
+else if((m=s.match(/^(\d{1,2})\s*([\u0E00-\u0E7F.]{2,6})(?:\s*(\d{2,4}))?$/))&&MO[m[2].replace(/\./g,"")]){dy=String(+m[1]);mo=m[2].replace(/\./g,"");if(m[3])yr=m[3]}});
 const dm=x.find(s=>DOC.test(s));if(dm)doc=dm;
 let a=0;for(let i=x.length-1;i>=2;i--){if(/^฿?[\d,]+(\.\d+)?(\s*บาท)?$/.test(x[i])){a=parseFloat(x[i].replace(/[^\d.]/g,""));break}}
 if(x.some(s=>/ยอดยก|ยกไป|^รวม/.test(s))){skip++;if(/ยอดยก/.test(x.join(""))&&a&&k=="in"){const m=MO[mo]||mo;opens.push({a,d:dy+" "+m,mn:MN[m]||0,dn:+dy||0,k:"in"})}return}
 const d=x.slice(2).filter(s=>/[\u0E00-\u0E7F]/.test(s)&&!DOC.test(s)).pop();
 if(!d||!a)return;
-const m=MO[mo]||mo;
-const nr={k,d:dy+" "+m,mn:MN[m]||0,dn:+dy||0,doc,desc:d,code:guess(d,L),a};
+const m=MO[mo]||mo||$("pm").value;
+const nr={k,d:((dy?dy+" ":"")+m).trim(),mn:MN[m]||0,dn:+dy||0,doc,desc:d,code:guess(d,L),a,src:!!dy};
 if(doc&&rows.some(r=>r.k==k&&r.d==nr.d&&r.doc==doc&&r.desc==d&&r.a==a)){dup++;return}
 rows.push(nr)});
+if(yr&&!$("py").value)$("py").value=yr.length==2?"25"+yr:yr;
 render();$("info").textContent+=(dup?" · ข้ามรายการซ้ำ "+dup:"");applyOpen()}
 function render(){
 const show=rows.length>0;$("rc").style.display=$("oc").style.display=show?"block":"none";$("sc").style.display=(show||Object.keys(carry.c).length)?"block":"none";
 const m0=(rows.find(r=>r.mn)||{}).mn||1;
 const key=window.key=r=>(((r.mn?(r.mn-m0+12)%12:0)*100+r.dn)*2)+(r.k=="out"?1:0);
 const ord=rows.map((_,i)=>i);if($("so").checked)ord.sort((a,b)=>key(rows[a])-key(rows[b]));
-window.ord=ord;
+window.ord=ord;$("dw").textContent=rows.some(r=>!r.dn)?"⚠️ มีรายการที่ยังไม่มีวันที่ ถ้าข้อมูลที่วางไม่มีคอลัมน์เดือน/วันที่ ให้คัดลอกคอลัมน์เหล่านั้นมาด้วย หรือพิมพ์วันที่ในช่อง “วันที่” ของตาราง (แถวถัดไปจะได้วันเดียวกันจนกว่าจะเจอวันใหม่) เช่น 2 หรือ 2 พ.ย.":"";
 $("tb").innerHTML="<tr><th></th><th>วันที่</th><th>เลขที่</th><th>รายการ</th><th>รหัส</th><th>จำนวน</th></tr>"+ord.map(i=>{const r=rows[i],L=r.k=="in"?IN:OUT;
-return `<tr><td>${r.k=="in"?"💚":"🧡"}</td><td>${esc(r.d)}</td><td>${esc(r.doc)}</td><td>${esc(r.desc)}</td><td><select onchange="rows[${i}].code=this.value;upd()"><option value="">? เลือก</option>${L.map(c=>`<option value="${c[0]}" ${r.code==c[0]?"selected":""}>${c[0]}</option>`).join("")}</select></td><td class="n">${fmt(r.a)}</td></tr>`}).join("");
+return `<tr><td>${r.k=="in"?"💚":"🧡"}</td><td><input class="di" value="${esc(r.d)}" onchange="setD(${i},this.value)" placeholder="วัน เดือน"></td><td>${esc(r.doc)}</td><td>${esc(r.desc)}</td><td><select onchange="rows[${i}].code=this.value;upd()"><option value="">? เลือก</option>${L.map(c=>`<option value="${c[0]}" ${r.code==c[0]?"selected":""}>${c[0]}</option>`).join("")}</select></td><td class="n">${fmt(r.a)}</td></tr>`}).join("");
 $("info").textContent=`รับ ${rows.filter(r=>r.k=="in").length} · จ่าย ${rows.filter(r=>r.k=="out").length} รายการ`;
 upd()}
 function upd(){
@@ -213,6 +222,14 @@ const o=opens.slice().sort((a,b)=>kf(a)-kf(b))[0];
 
 n.textContent="พบแถวยอดยกมาในข้อความที่วาง (ไม่นำมาบวก ใช้ช่องยอดสะสมจากเดือนก่อนแทน): "+opens.map(x=>fmt(x.a)+" ("+x.d+")").join(" · ")+"";
 upd()}
+function setD(i,t){t=t.trim();let dy="",m=$("pm").value,x;
+if((x=t.match(/^(\d{1,2})[\/\-.](\d{1,2})(?:[\/\-.]\d{2,4})?$/))){dy=String(+x[1]);m=MO[MA[+x[2]]]||m}
+else if((x=t.match(/^(\d{1,2})\s*([\u0E00-\u0E7F.]*)$/))){dy=String(+x[1]);const k=x[2].replace(/\./g,"");if(MO[k])m=MO[k]}
+const nd=((dy?dy+" ":"")+m).trim(),r=rows[i];
+const set=q=>{q.d=nd;q.dn=+dy||0;q.mn=MN[m]||0};
+set(r);r.man=true;
+for(let j=i+1;j<rows.length;j++){const q=rows[j];if(q.k!=r.k||q.src||q.man)break;set(q)}
+render()}
 function setCarry(){const c={},R=tsv($("ci").value);let st="",en="";
 R.forEach(x=>{x=x.map(s=>s.trim());
 if(/ช่วงวันที่/.test(x[0]||"")){const p=(x.slice(1).find(s=>s)||"").split(/\s*[–-]\s*/);st=p[0]||"";en=p[1]||""}
@@ -231,16 +248,19 @@ async function closeMonth(){
 if(!rows.length){$("cn").textContent="ยังไม่มีข้อมูลของเดือนนี้ให้ปิด";return}
 if(rows.some(r=>!r.code)){alert("ยังมีรายการที่ไม่มีรหัส กรุณาเลือกรหัสให้ครบก่อน");return}
 const ds=rows.filter(r=>r.dn).slice().sort((a,b)=>window.key(a)-window.key(b));
-const st=ds[0]?ds[0].d:"",en=ds.length?ds[ds.length-1].d:"";
-if(!confirm("ปิดเดือน "+st+" – "+en+" แล้วเริ่มเดือนใหม่?\n(ระบบจะบันทึกรายการเดือนนี้ไว้ให้ก่อน และเก็บยอดไว้เป็นยอดสะสม)"))return;
-try{await ST.save({name:"เดือน "+st+" – "+en,at:Date.now(),op:$("op").value,ac:$("ac").value,rows})}catch(e){}
+const y=$("py").value,pm=$("pm").value||(ds[0]&&ds[0].d.split(" ")[1])||"";
+const nm=(prompt("ชื่อเดือนที่จะปิด (เช่น พ.ย. 2568)",(pm+" "+y).trim())||"").trim();
+if(!nm)return;
+const st=ds[0]?ds[0].d:nm,en=ds.length?ds[ds.length-1].d+(y?" "+y:""):nm;
+if(!confirm("ปิดเดือน "+nm+" แล้วเริ่มเดือนใหม่?\n(ระบบจะบันทึกรายการเดือนนี้ไว้ให้ก่อน และเก็บยอดไว้เป็นยอดสะสม)"))return;
+try{await ST.save({name:"เดือน "+nm,at:Date.now(),op:$("op").value,ac:$("ac").value,rows})}catch(e){}
 rows.forEach(r=>{carry.c[r.code]=(carry.c[r.code]||0)+r.a});
 carry.start=carry.start||st;carry.end=en;
 await saveCarry();rows=[];opens=[];$("ac").value="";$("on").textContent="";render();renderCarry();showSets()}
 function days(){
 const C=carry.c,run={...C},op=parseFloat($("op").value)||0,g={},order=[];
 const q=x=>/[\t\n"]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x;
-(window.ord||[]).forEach(i=>{const r=rows[i];if(!g[r.d]){g[r.d]=[];order.push(r.d)}g[r.d].push(r)});
+(window.ord||[]).forEach(i=>{const r=rows[i];const dk=r.d||"ไม่ระบุวัน";if(!g[dk]){g[dk]=[];order.push(dk)}g[dk].push(r)});
 window.sTxt=[];window.dTxt=[];let hs="",hc="";
 order.forEach((d,n)=>{const R=g[d],ds={},miss=R.some(r=>!r.code);
 [...IN,...OUT].forEach(c=>ds[c[0]]=0);
