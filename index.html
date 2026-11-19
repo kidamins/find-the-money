@@ -35,6 +35,7 @@ h3{margin:12px 0 4px;font-size:.95rem}
 .r3{display:grid;grid-template-columns:1fr 92px 104px;gap:6px}.r3 span+span{text-align:right;font-variant-numeric:tabular-nums}.hd{color:var(--mute);font-size:.8rem}
 details{margin:6px 0}details>summary{cursor:pointer;padding:4px 0}
 .di{width:88px;padding:4px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font:inherit}
+.x{border:0;background:none;color:var(--mute);font-size:1.1rem;cursor:pointer}
 </style>
 </head>
 <body>
@@ -48,12 +49,14 @@ details{margin:6px 0}details>summary{cursor:pointer;padding:4px 0}
   </div>
   <div class="sm" style="margin-bottom:6px">คัดลอกแถวจากบันทึกรายรับหรือรายจ่ายประจำวัน (เดือน, วันที่, เอกสาร, รายการ, จำนวนเงิน) ไม่ต้องรวมหัวตาราง วางทีละชนิด หรือวางต่อกันหลายชุดเพื่อสะสมยอดได้</div>
   <label class="sm" style="display:block;margin-bottom:6px"><input type="checkbox" id="acc" checked> สะสมยอด: เพิ่มต่อจากข้อมูลที่วางไว้แล้ว (ไม่ติ๊ก = แทนที่ของเดิม)</label>
+  <label class="sm" style="display:block;margin-bottom:6px"><input type="checkbox" id="rd"> แทนที่เฉพาะวันที่ที่วางมา (ใช้แก้ข้อมูลรายวัน: วางข้อมูลวันนั้นใหม่ ข้อมูลเก่าของวันเดียวกันจะถูกแทนที่)</label>
   <div class="f"><span>เดือน/ปีของข้อมูล</span><select id="pm" style="max-width:120px"><option value="">ไม่ระบุ</option><option>ม.ค.</option><option>ก.พ.</option><option>มี.ค.</option><option>เม.ย.</option><option>พ.ค.</option><option>มิ.ย.</option><option>ก.ค.</option><option>ส.ค.</option><option>ก.ย.</option><option>ต.ค.</option><option>พ.ย.</option><option>ธ.ค.</option></select><input type="number" id="py" placeholder="ปี พ.ศ." style="max-width:110px"></div>
   <div class="sm" style="margin-bottom:6px">ใช้เมื่อข้อมูลที่วางไม่มีเดือน (ถ้ามีวันที่ในข้อมูลอยู่แล้ว ระบบอ่านเอง) ชื่อเดือนนี้จะใช้ตอนปิดเดือนด้วย</div>
   <textarea id="in" placeholder="วางที่นี่"></textarea>
   <button class="btn" onclick="go()">จัดรหัสบัญชีอัตโนมัติ</button>
   <button class="btn alt" onclick="$('in').value='';$('in').focus()">🗑️ ลบข้อความในช่องวาง</button>
-  <button class="btn alt" onclick="rows=[];opens=[];$('op').value='';render();applyOpen()">ล้างทั้งหมด</button>
+  <button class="btn alt" onclick="snap();rows=[];opens=[];$('op').value='';render();applyOpen()">ล้างทั้งหมด</button>
+  <button class="btn alt" onclick="undo()">↩️ ย้อนกลับ (การลบ/แก้ไขล่าสุด)</button>
   <div class="sm bad" id="gs"></div>
 </div>
 
@@ -117,13 +120,16 @@ details{margin:6px 0}details>summary{cursor:pointer;padding:4px 0}
 
 <script>
 const IN=[["401","ค่ากิจกรรมคณะสี",["คณะสี"]],["402","ค่าเสื้อกีฬา",["เสื้อกีฬา"]],["403","ค่าบำรุงสมาคม",["บำรุงสมาคม","สมาคม"]],["404","กิจกรรมส่งเสริมการศึกษา",["ส่งเสริมการศึกษา"]],["405","กิจกรรมชุมนุมและสาธารณประโยชน์",["ชุมนุม","สาธารณประโยชน์"]],["406","ค่าเบี้ยประกันภัย",["เบี้ยประกัน","ประกันภัย","ประกัน","อุบัติเหตุ"]],["407","รายได้จากการบริจาค",["บริจาค"]],["408","ดอกเบี้ยรับ",["ดอกเบี้ย"]]];
-const OUT=[["501","ค่าใช้จ่ายในการจัดกิจกรรม",["วัสดุ","อุปกรณ์","จัดกิจกรรม"]],["502","ค่าเสื้อกีฬา",["เสื้อกีฬา","เสื้อพละ"]],["503","ค่าใช้จ่ายในการส่งเสริมการ",["พี่เลี้ยง","เด็กพิการ","สมทบ","ลูกจ้าง","ส่งเสริม"]],["504","ค่าใช้จ่ายในกิจกรรมชุมนุม",["ชุมนุม"]],["505","ค่าใช้จ่ายในกิจกรรม",["สนับสนุน","สาธารณะ"]],["506","ค่าเบี้ยประกัน",["เบี้ยประกัน","ประกัน"]],["507","ค่าใช้จ่ายในการสร้างขวัญและ",["ทำบุญ","งานศพ","ใส่ซอง","ขวัญ","เช่ารถ","ค่าเช่า","เหมารถ","รถบัส"]],["508","ค่าใช้จ่ายในการประชุม",["ประชุม"]],["509","ค่าใช้จ่ายในการอมรม จัดงาน",["อบรม","อมรม","จัดงาน","อาหาร"]],["510","ภาษีเงินได้",["ภาษี"]],["511","ค่าทำบัญชีและสอบบัญชี",["ทำบัญชี","สอบบัญชี","บัญชี"]],["512","(ยังไม่กำหนด)",[]]];
+const OUT=[["501","ค่าใช้จ่ายในการจัดกิจกรรมคณะสี",["วัสดุ","อุปกรณ์","จัดกิจกรรม","คณะสี"]],["502","ค่าเสื้อกีฬา",["เสื้อกีฬา","เสื้อพละ"]],["503","ค่าใช้จ่ายในการส่งเสริมการศึกษา",["พี่เลี้ยง","เด็กพิการ","สมทบ","ลูกจ้าง","ส่งเสริม"]],["504","ค่าใช้จ่ายในกิจกรรมชุมนุม",["ชุมนุม"]],["505","ค่าใช้จ่ายในกิจกรรมสาธารณประโยชน์",["สนับสนุน","สาธารณะ"]],["506","ค่าเบี้ยประกัน",["เบี้ยประกัน","ประกัน"]],["507","ค่าใช้จ่ายในการสร้างขวัญและกำลังใจ",["ทำบุญ","งานศพ","ใส่ซอง","ขวัญ","เช่ารถ","ค่าเช่า","เหมารถ","รถบัส"]],["508","ค่าใช้จ่ายในการประชุม",["ประชุม"]],["509","ค่าใช้จ่ายในการอบรม จัดงานและการศึกษาดูงาน",["อบรม","อมรม","จัดงาน","ศึกษาดูงาน","อาหาร"]],["510","ภาษีเงินได้",["ภาษี"]],["511","ค่าทำบัญชีและสอบบัญชี",["ทำบัญชี","สอบบัญชี","บัญชี"]],["512","(ยังไม่กำหนด)",[]]];
 const MO={"มค":"ม.ค.","กพ":"ก.พ.","มีค":"มี.ค.","เมย":"เม.ย.","พค":"พ.ค.","มิย":"มิ.ย.","กค":"ก.ค.","สค":"ส.ค.","กย":"ก.ย.","ตค":"ต.ค.","พย":"พ.ย.","ธค":"ธ.ค."};
 const MN=Object.fromEntries(Object.values(MO).map((m,i)=>[m,i+1]));
 const MA=["",...Object.keys(MO)];
 const FUNDS=[["401","กิจกรรมคณะสี"],["402","ค่าเสื้อคณะสี"],["403","ค่าบำรุงสมาคม"],["404","กิจกรรมส่งเสริมการศึกษา"],["405","ค่ากิจกรรมชุมนุมและสาธารณประโยชน์"]];
-let FM={"502":"402","503":"404","504":"405","505":"405"};
-const fundOf=r=>r.k!="out"?"":(r.fx!==undefined?r.fx:(FM[r.code]||""));
+let FM={"501":"401","502":"402","503":"404","504":"405","505":"405","507":"403","508":"403","511":"403"};
+const PRJ={"11":"403","12":"403","13":"403","21":"404","22":"404","23":"404","24":"402","25":"401","31":"404","32":"404","33":"404","41":"405","42":"405"};
+const FK=[["401",["กีฬาภายใน","อุปกรณ์การกีฬา","คณะสี"]],["402",["เสื้อกีฬา","เสื้อคณะสี"]],["403",["ประชุม","ผู้ปกครอง","ผู้ป่วย","อุบัติเหตุ","งานมงคล","อวมงคล","งานศพ","ทำบุญ","ตรวจสอบบัญชี","ทำบัญชี","ประชาสัมพันธ์"]],["404",["สื่อการเรียน","ห้องปฏิบัติการ","ครุภัณฑ์","แนะแนว","ศึกษาต่อ","เชิดชูเกียรติ","ประกวด","แข่งขัน","รางวัล","ทุนการศึกษา","ทุนดำรงชีพ","ค่าครองชีพ","ลูกจ้าง","พี่เลี้ยง","เด็กพิการ","วันเด็ก","วันสำคัญ"]],["405",["ผู้ประสบภัย","พัฒนาชุมชน","ผ้าป่า","พันธมิตร","สาธารณประโยชน์","ชุมนุม"]]];
+const fundGuess=t=>{const m=t.match(/สม\s*(\d{2})/);if(m&&PRJ[m[1]])return PRJ[m[1]];const n=norm(t);let b="",bl=0;for(const f of FK)for(const k of f[1]){const q=norm(k);if(n.includes(q)&&q.length>bl){bl=q.length;b=f[0]}}return b};
+const fundOf=r=>r.k!="out"?"":(r.fx!==undefined?r.fx:(fundGuess(r.desc||"")||FM[r.code]||""));
 const $=id=>document.getElementById(id);
 const fmt=n=>n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -148,7 +154,7 @@ const DOC=/^[\u0E00-\u0E7F]{1,4}\s*\d+(\/[\d-]+)?$/;
 const kind=()=>document.querySelector('input[name=k]:checked').value;
 function go(){
 const k=kind(),L=k=="in"?IN:OUT;let mo="",dy="",doc="",skip=0,dup=0,yr="",na=0,ad=0;
-if(!$("acc").checked){rows=rows.filter(r=>r.k!=k);if(k=="in")opens=[]}
+snap();if(!$("acc").checked){rows=rows.filter(r=>r.k!=k);if(k=="in")opens=[]}
 tsv($("in").value).forEach(c=>{
 let x=c.map(s=>s.trim());if(x.length==1){const m1=x[0].match(/^(.*\S)\s+(฿?[\d,]+(?:\.\d+)?)$/);if(m1)x=[m1[1],m1[2]]}
 if(x[0]&&MO[x[0].replace(/[.\s]/g,"")])mo=x[0].replace(/[.\s]/g,"");
@@ -163,8 +169,10 @@ const d=x.filter(s=>/[\u0E00-\u0E7F]/.test(s)&&!DOC.test(s)&&!MO[s.replace(/[.\s
 if(d&&!a)na++;if(!d||!a)return;
 const m=MO[mo]||mo||$("pm").value;
 const nr={k,d:((dy?dy+" ":"")+m).trim(),mn:MN[m]||0,dn:+dy||0,doc,desc:d,code:guess(d,L),a,src:!!dy};
-if(doc&&rows.some(r=>r.k==k&&r.d==nr.d&&r.doc==doc&&r.desc==d&&r.a==a)){dup++;return}
-rows.push(nr);ad++});
+if(doc&&!$("rd").checked&&rows.some(r=>r.k==k&&r.d==nr.d&&r.doc==doc&&r.desc==d&&r.a==a)){dup++;return}
+nr._n=1;rows.push(nr);ad++});
+if($("rd").checked){const dset=new Set(rows.filter(r=>r._n).map(r=>r.d));rows=rows.filter(r=>r._n||r.k!=k||!dset.has(r.d))}
+rows.forEach(r=>{delete r._n});
 if(yr&&!$("py").value)$("py").value=yr.length==2?"25"+yr:yr;
 render();$("info").textContent+=(dup?" · ข้ามรายการซ้ำ "+dup:"")+(na?" · ข้าม "+na+" บรรทัดที่ไม่มีจำนวนเงิน":"");$("gs").textContent=ad||dup?"":"ไม่พบรายการที่มีทั้งชื่อรายการและจำนวนเงินในข้อความที่วาง (ลองคัดลอกให้มีคอลัมน์จำนวนเงินด้วย)";applyOpen()}
 function render(){
@@ -173,8 +181,8 @@ const m0=(rows.find(r=>r.mn)||{}).mn||1;
 const key=window.key=r=>(((r.mn?(r.mn-m0+12)%12:0)*100+r.dn)*2)+(r.k=="out"?1:0);
 const ord=rows.map((_,i)=>i);if($("so").checked)ord.sort((a,b)=>key(rows[a])-key(rows[b]));
 window.ord=ord;$("dw").textContent=rows.some(r=>!r.dn)?"⚠️ มีรายการที่ยังไม่มีวันที่ ถ้าข้อมูลที่วางไม่มีคอลัมน์เดือน/วันที่ ให้คัดลอกคอลัมน์เหล่านั้นมาด้วย หรือพิมพ์วันที่ในช่อง “วันที่” ของตาราง (แถวถัดไปจะได้วันเดียวกันจนกว่าจะเจอวันใหม่) เช่น 2 หรือ 2 พ.ย.":"";
-$("tb").innerHTML="<tr><th></th><th>วันที่</th><th>เลขที่</th><th>รายการ</th><th>รหัส</th><th>ตัดจาก</th><th>จำนวน</th></tr>"+ord.map(i=>{const r=rows[i],L=r.k=="in"?IN:OUT;
-return `<tr><td>${r.k=="in"?"💚":"🧡"}</td><td><input class="di" value="${esc(r.d)}" onchange="setD(${i},this.value)" placeholder="วัน เดือน"></td><td>${esc(r.doc)}</td><td>${esc(r.desc)}</td><td><select onchange="rows[${i}].code=this.value;render()"><option value="">? เลือก</option>${L.map(c=>`<option value="${c[0]}" ${r.code==c[0]?"selected":""}>${c[0]}</option>`).join("")}</select></td><td>${r.k=="out"?`<select onchange="rows[${i}].fx=this.value;upd()"><option value="">—</option>${FUNDS.map(f=>`<option value="${f[0]}" ${fundOf(r)==f[0]?"selected":""}>${f[0]}</option>`).join("")}</select>`:""}</td><td class="n">${fmt(r.a)}</td></tr>`}).join("");
+$("tb").innerHTML="<tr><th></th><th>วันที่</th><th>เลขที่</th><th>รายการ</th><th>รหัส</th><th>ตัดจาก</th><th>จำนวน</th><th></th></tr>"+ord.map(i=>{const r=rows[i],L=r.k=="in"?IN:OUT;
+return `<tr><td>${r.k=="in"?"💚":"🧡"}</td><td><input class="di" value="${esc(r.d)}" onchange="setD(${i},this.value)" placeholder="วัน เดือน"></td><td><input class="di" value="${esc(r.doc)}" onchange="rows[${i}].doc=this.value;upd()"></td><td><input class="di" style="width:170px" value="${esc(r.desc)}" onchange="setT(${i},this.value)"></td><td><select onchange="rows[${i}].code=this.value;render()"><option value="">? เลือก</option>${L.map(c=>`<option value="${c[0]}" ${r.code==c[0]?"selected":""}>${c[0]}</option>`).join("")}</select></td><td>${r.k=="out"?`<select onchange="rows[${i}].fx=this.value;upd()"><option value="">—</option>${FUNDS.map(f=>`<option value="${f[0]}" ${fundOf(r)==f[0]?"selected":""}>${f[0]}</option>`).join("")}</select>`:""}</td><td class="n"><input class="di" style="width:92px;text-align:right" value="${r.a}" onchange="setA(${i},this.value)"></td><td><button class="x" onclick="delRow(${i})">✕</button></td></tr>`}).join("");
 $("info").textContent=`รับ ${rows.filter(r=>r.k=="in").length} · จ่าย ${rows.filter(r=>r.k=="out").length} รายการ`;
 upd()}
 function upd(){
@@ -259,6 +267,13 @@ el.innerHTML=`<div class="scroll" style="margin-top:8px"><table>${chk.map((r,i)=
 +`<h3>ยอดแต่ละรหัสที่เช็ค</h3><div class="row r3 hd"><span></span><span>เช็ค</span><span>${hm?"ต่างจากเดือนนี้":""}</span></div>`
 +ALL.filter(c=>T[c[0]]||(hm&&M[c[0]])).map(c=>{const d=Math.round((T[c[0]]-M[c[0]])*100)/100;return `<div class="row r3"><span><b>${c[0]}</b> ${esc(c[1])}</span><span>${fmt(T[c[0]])}</span><span class="${hm?(d?"bad":"ok"):""}">${hm?(d?fmt(d):"ตรง ✓"):""}</span></div>`}).join("")
 +`<div class="row r3 t"><span>รวมที่เช็ค</span><span>${fmt(tot)}</span><span></span></div>`}
+let hist=[];
+function snap(){hist.push(JSON.stringify(rows));if(hist.length>20)hist.shift()}
+function undo(){if(!hist.length){$("cn").textContent="ไม่มีอะไรให้ย้อนกลับ";return}rows=JSON.parse(hist.pop());render();renderCarry()}
+function delRow(i){snap();rows.splice(i,1);render()}
+function setA(i,v){const a=parseFloat(String(v).replace(/[^\d.]/g,""));if(isNaN(a))return;snap();rows[i].a=a;render()}
+function setT(i,v){snap();const r=rows[i];r.desc=v.trim();const g=guess(r.desc,r.k=="in"?IN:OUT);if(g)r.code=g;render()}
+function delDay(n){const dk=window.dKeys[n],t=r=>(r.d||"ไม่ระบุวัน")===dk;const c=rows.filter(t).length;if(!confirm("ลบข้อมูลของ "+dk+" ทั้งหมด "+c+" รายการ?\n(กด “ย้อนกลับ” ได้ถ้าลบผิด)"))return;snap();rows=rows.filter(r=>!t(r));render();renderCarry()}
 function setD(i,t){t=t.trim();let dy="",m=$("pm").value,x;
 if((x=t.match(/^(\d{1,2})[\/\-.](\d{1,2})(?:[\/\-.]\d{2,4})?$/))){dy=String(+x[1]);m=MO[MA[+x[2]]]||m}
 else if((x=t.match(/^(\d{1,2})\s*([\u0E00-\u0E7F.]*)$/))){dy=String(+x[1]);const k=x[2].replace(/\./g,"");if(MO[k])m=MO[k]}
@@ -295,12 +310,12 @@ try{await ST.save({name:"เดือน "+nm,at:Date.now(),op:$("op").value,ac:
 rows.forEach(r=>{carry.c[r.code]=(carry.c[r.code]||0)+r.a});
 carry.fe=carry.fe||{};rows.forEach(r=>{const f=fundOf(r);if(f)carry.fe[f]=(carry.fe[f]||0)+r.a});
 carry.start=carry.start||st;carry.end=en;
-await saveCarry();rows=[];opens=[];$("ac").value="";$("on").textContent="";render();renderCarry();showSets()}
+await saveCarry();rows=[];opens=[];hist=[];$("ac").value="";$("on").textContent="";render();renderCarry();showSets()}
 function days(){
 const C=carry.c,run={...C},op=parseFloat($("op").value)||0,g={},order=[];
 const q=x=>/[\t\n"]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x;
 (window.ord||[]).forEach(i=>{const r=rows[i];const dk=r.d||"ไม่ระบุวัน";if(!g[dk]){g[dk]=[];order.push(dk)}g[dk].push(r)});
-window.sTxt=[];window.dTxt=[];let hs="",hc="";
+window.dKeys=order;window.sTxt=[];window.dTxt=[];let hs="",hc="";
 order.forEach((d,n)=>{const R=g[d],ds={},miss=R.some(r=>!r.code);
 [...IN,...OUT].forEach(c=>ds[c[0]]=0);
 R.forEach(r=>{if(r.code){ds[r.code]+=r.a;run[r.code]=(run[r.code]||0)+r.a}});
@@ -311,7 +326,7 @@ const T=[["วันที่",d,"",""],["รหัส","รายการ","�
 sTxt.push(T.map(r=>r.join("\t")).join("\n"));
 dTxt.push(R.map(r=>[r.d,r.k=="in"?"ใบเสร็จ":"ใบจ่าย",r.doc,r.desc,r.code,r.a].map(q).join("\t")).join("\n"));
 hs+=`<details><summary><b>${esc(d)}</b> · รับ ${fmt(di)} · จ่าย ${fmt(dx)} · คงเหลือสะสม ${fmt(op+ci-cx)}</summary><div class="row r3 hd"><span></span><span>วันนี้</span><span>สะสม</span></div>${nz.map(c=>`<div class="row r3"><span><b>${c[0]}</b> ${esc(c[1])}</span><span>${fmt(ds[c[0]])}</span><span>${fmt(run[c[0]]||0)}</span></div>`).join("")}<button class="btn alt" ${miss?"disabled":""} onclick="cp(sTxt[${n}],null,this)">คัดลอกยอดวันนี้</button></details>`;
-hc+=`<details><summary><b>${esc(d)}</b> · ${R.length} รายการ · ${fmt(R.reduce((s,r)=>s+r.a,0))}</summary>${R.map(r=>`<div class="row"><span>${esc(r.doc)} ${esc(r.desc)} <b>${r.code||"?"}</b></span><span>${fmt(r.a)}</span></div>`).join("")}<button class="btn alt" ${miss?"disabled":""} onclick="cp(dTxt[${n}],null,this)">คัดลอกรายการวันนี้</button></details>`});
+hc+=`<details><summary><b>${esc(d)}</b> · ${R.length} รายการ · ${fmt(R.reduce((s,r)=>s+r.a,0))}</summary>${R.map(r=>`<div class="row"><span>${esc(r.doc)} ${esc(r.desc)} <b>${r.code||"?"}</b></span><span>${fmt(r.a)}</span></div>`).join("")}<button class="btn alt" ${miss?"disabled":""} onclick="cp(dTxt[${n}],null,this)">คัดลอกรายการวันนี้</button><button class="btn alt" onclick="delDay(${n})">🗑️ ลบข้อมูลของวันนี้</button></details>`});
 $("ds").innerHTML=hs;$("dl").innerHTML=hc}
 async function cp(t,id,b){let ok=true;try{await navigator.clipboard.writeText(t)}catch(e){try{const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();document.execCommand("copy");a.remove()}catch(e2){ok=false}}
 if(b){const o=b.textContent;b.textContent=ok?"คัดลอกแล้ว ✓":"คัดลอกไม่สำเร็จ";setTimeout(()=>b.textContent=o,1500)}
